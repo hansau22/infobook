@@ -52,7 +52,7 @@ class connectionHandler:
         sessid = self.sid_pool
         self.sid_pool += 1
         proot = 2
-        prime = 2959758 # taken from 6144-group RFC 3546
+        prime = 2959758 # related 6144-group RFC 3546
         num = random.randrange(1, prime - 2, 1)
         b = proot**num % prime
         resp = str(sessid) + ":" + str(b)
