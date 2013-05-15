@@ -2,16 +2,20 @@ import socket
 import re
 from Crypto.Cipher import Blowfish
 from Crypto import Random
+from Crypto.Hash import SHA256
+from Crypto import Random
 import random
+import sqlite3
 
 class connectionHandler:
     def __init__(self):
-        self.sid_pool = 0
+        self.sid_pool = pool(0)
         self.sesskey = []
-        
+        self.ivs = []
+        self.hashengine = SHA256.new()
         
         serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serv_soc.bind(("", 32322))
+        serv_soc.bind(("", 32323))
         serv_soc.listen(1)
         
         try:
@@ -63,8 +67,7 @@ class connectionHandler:
 
     def init_dh(self, data):
         print "a:  " + data
-        sessid = self.sid_pool
-        self.sid_pool += 1
+        sessid = self.sid_pool.give_next()
         proot = 3
         #prime = 2959259
         prime = 13
@@ -96,7 +99,85 @@ class connectionHandler:
         print data
         return ""
         
+    
+class databaseHandler:
+    def __init__(self, database):
+        self.db = sqlite3.connect(database)
+        self.cursor = self.db.cursor()
+        self.mid_pool = pool(0, self.get_last_mid())
+    
+    def init_db(self):
+        self.cursor.execute("CREATE TABLE user(uid INTEGER, username TEXT, password TEXT)")
+        self.cursor.execute("CREATE TABLE messages(mid INTEGER, uidsender INTEGER, uidreveiver INTEGER, content TEXT)")
         
+        self.cursor.commit()
+        
+    def add_user(self, uid, username, pwhash):
+        self.cursor.execute("INSERT INTO user VALUES(?, ?, ?)", (uid, username, pwhash))
+        self.cursor.commit()
+        
+    def auth_user(self, username, pwhash):
+        self.cursor.execute("SELECT * FROM user WHERE username=? AND password=?", (username, pwhash))
+        if self.cursor.rowcount == 1:
+            return True
+        return False
+        
+    def rcv_message(self, uidSender, uidReceiver, data):
+        if not isinstance(uidSender, int): return False
+        if not isinstance(data, str): return False
+        
+        if not isinstance(uidReceiver, list):
+            if not isinstance(uidReceiver, int):
+                return False
+            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.midpool.getNext(), uidSender, uidReveiver, data))
+            
+        else:
+            for item in uidReceiver:
+                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.midpool.getNext(), uidSender, item, data))
+        
+        self.cursor.commit()
+    
+    
+    def get_last_mid(self):
+        self.cursor.execute("SELECT mid FROM messages ORDER BY DSC")
+        return self.cursor.fetchone()
+
+# Pool: controls integer id's        
+        
+class pool:
+    
+    ##
+    # max_num = highest possible number - 0 for unlimited
+    # typ = type - int or char
+    ##
+    
+    def __init__(self, max_num, start = None):
+        if (start == None) or not isinstance(start, int):
+            self.cur = 0
+        else:
+            self.cur = start
+            
+        if (max_num == 0) or not isinstance(max_num, int):
+            self.max_num = None
+        else:
+            self.max_num = max_num
+            
+        self.free = []
+    
+    def give_next(self):
+        if (self.cur != self.max_num) or (self.max_num == None):
+            ret = self.cur
+            self.cur += 1
+            return ret
+        
+        if len(self.free) < 0:
+            return False
+        return self.free.pop()
+    
+    def remove(self, num):
+        if isinstance(num, int):
+            self.free.append(num)
+       
         
         
 conn = connectionHandler()
