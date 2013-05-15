@@ -15,7 +15,7 @@ class connectionHandler:
         self.hashengine = SHA256.new()
         
         serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serv_soc.bind(("", 32323))
+        serv_soc.bind(("", 32322))
         serv_soc.listen(1)
         
         try:
@@ -31,20 +31,22 @@ class connectionHandler:
                     if self.is_encrypted(data):
                         body = self.decrypt(data)
 
-                    print "data:  "+data
                     data = re.split(";", data)
-                    print data
                     header = self.parse_header(data[0])
                     data = data[1]
+                    
+                    resp = "invalid request"
 
                     if header[0]== "dhex":
                         resp = self.init_dh(data)                      
                     elif header[0] == "auth":
-                        resp = self.auth_user(data)
+                        resp = self.auth_user(body)
                     elif header[0] == "mesg":
                         resp = self.recv_msg(body)
                     elif header[0] == "file":
-                        resp = self.recv_file(data)
+                        resp = self.recv_file(body)
+                    elif header[0] == "brdc":
+                        resp = self.recv_brdc(body)
                     
                     komm.send(resp)
                     komm.close()
@@ -63,7 +65,7 @@ class connectionHandler:
             return False
         return True
         
-    # generates the AES sessionkey based on the algorithm of Diffie-Hellman
+    # generates the Blowfish sessionkey based on the algorithm of Diffie-Hellman
 
     def init_dh(self, data):
         print "a:  " + data
@@ -97,6 +99,14 @@ class connectionHandler:
         
     def recv_msg(self, data):
         print data
+        return ""
+        
+    def recv_file(self, data):
+        
+        return ""
+    
+    def auth_user(self, data):
+        
         return ""
         
     
