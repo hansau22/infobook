@@ -1,28 +1,32 @@
 import socket
 import re
+import sys
 from Crypto.Cipher import Blowfish
 from Crypto import Random
 from Crypto.Hash import SHA256
 from Crypto import Random
 import random
 import sqlite3
+import dh
 
 class connectionHandler:
     def __init__(self):
+        self.database = databaseHandler("gu.db")
         self.sid_pool = pool(0)
         self.sesskey = []
         self.ivs = []
+        self.uidstrings = []
         self.hashengine = SHA256.new()
         
         serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serv_soc.bind(("", 32322))
+        serv_soc.bind(("", int(sys.argv[1])))
         serv_soc.listen(1)
         
         try:
             while True: 
                 komm, addr = serv_soc.accept() 
                 while True: 
-                    data = komm.recv(1024)
+                    data = komm.recv(10000)
 
                     if not data: 
                         komm.close() 
@@ -31,24 +35,28 @@ class connectionHandler:
                     if self.is_encrypted(data):
                         body = self.decrypt(data)
 
-                    data = re.split(";", data)
-                    header = self.parse_header(data[0])
+                    data = re.split(";", data, 1)
+                    self.header = self.parse_header(data[0])
                     data = data[1]
                     
                     resp = "invalid request"
 
-                    if header[0]== "dhex":
+                    if self.header[0] == "dhex":
                         resp = self.init_dh(data)                      
-                    elif header[0] == "auth":
+                    elif self.header[0] == "auth":
                         resp = self.auth_user(body)
-                    elif header[0] == "mesg":
+                    elif self.header[0] == "mesg":
                         resp = self.recv_msg(body)
-                    elif header[0] == "file":
+                    elif self.header[0] == "file":
                         resp = self.recv_file(body)
-                    elif header[0] == "brdc":
+                    elif self.header[0] == "brdc":
                         resp = self.recv_brdc(body)
                     
-                    komm.send(resp)
+                    if self.header[0] == "dhex":
+                        komm.send(resp)
+                    else:
+                        komm.send(self.build_pack(resp))
+                        
                     komm.close()
                     break
                     
@@ -57,15 +65,20 @@ class connectionHandler:
             
             
     def parse_header(self, data):
-        return re.split(":", data)
+        return re.split(":", data, 2)
+        
+    def build_pack(self, msg):
+        print "msg:" + msg
+        package = "none" + ":" + "12.12.12" + ":" + self.header[2] + ";"
+        iv = "asdf"
+        package += self.encrypt(msg)
+        return package
         
     def is_encrypted(self, data):
-        tmp = re.split(":", data)
+        tmp = re.split(":", data, 2)
         if tmp[0] == "dhex":
             return False
         return True
-        
-    # generates the Blowfish sessionkey based on the algorithm of Diffie-Hellman
 
     def init_dh(self, data):
         print "a:  " + data
@@ -75,30 +88,45 @@ class connectionHandler:
         prime = 13
         num = random.randrange(1, prime - 2, 1)
         b = proot**num % prime
+        #b = dh.generate_b()
         print "b:  " + str(b)
         resp = str(sessid) + ":" + str(b)
         sesskey = int(data)**num % prime
-        self.sesskey.append(sesskey)
+        self.sesskey.append(str(sesskey))
+        self.uidstrings.append("")
         print "sesskey:  " + str(sesskey)
         return resp
         
     def decrypt(self, data):
-        tmp = re.split(";", data)
-        skeyid = re.split(":", tmp[0])
-        skeyid = skeyid[3]
-        tmp = re.split(":", tmp[1])
+        tmp = re.split(";", data, 1)
+        skeyid = re.split(":", tmp[0], 2)
+        skeyid = int(skeyid[2])
+        tmp = re.split(":", tmp[1], 1)
         iv = tmp[0]
-        cipher = Blowfish.new(str(self.sesskey[int(skeyid)]), Blowfish.MODE_CFB, "asdfasdf")
-        return cipher.decrypt(tmp[1])
+        cipher = Blowfish.new(self.sesskey[skeyid], Blowfish.MODE_CFB, "asdfasdf")
+        dec = cipher.decrypt(tmp[0])
+        return dec
         
     def encrypt(self, data):
-        tmp = re.split(":", data)
-        iv = data[1]
-        cipher = Blowfish.new(self.sesskey[int(data[0])], Blowfish.MODE_CFB, int(iv))
-        return data[0] + ":" + iv + ":" + cipher.encrypt(data[2])
+        tmp = re.split(":", data ,1)
+        iv = tmp[0]
+        skeyid = int(self.header[2])
+        cipher = Blowfish.new(self.sesskey[skeyid], Blowfish.MODE_CFB, "asdfasdf")
+        return cipher.encrypt(data)
+        
+    def get_hash(self, string):
+        self.hashengine.update(string)
+        digest = self.hashengine.hexdigest()
+        self.hashengine.update("")
+        return digest
         
     def recv_msg(self, data):
-        print data
+        sid = int(self.header[2])
+        tmp = re.split(":", data, 1)
+        if self.uidstrings[sid] == tmp[0]:
+            print tmp[1]
+        else:
+            print "error - wrong uidstring :" + tmp[0]
         return ""
         
     def recv_file(self, data):
@@ -106,8 +134,14 @@ class connectionHandler:
         return ""
     
     def auth_user(self, data):
-        
-        return ""
+        cred = re.split(":", data, 1)
+        if self.database.auth_user(cred[0], cred[1]) == True:
+            dig = self.get_hash(self.sesskey[int(self.header[2])] + cred[0])
+            self.uidstrings[int(self.header[2])] = dig
+            return dig
+        else:
+            return "wrong creditials"
+            
         
     
 class databaseHandler:
@@ -115,20 +149,20 @@ class databaseHandler:
         self.db = sqlite3.connect(database)
         self.cursor = self.db.cursor()
         self.mid_pool = pool(0, self.get_last_mid())
+        self.init_db()
     
     def init_db(self):
-        self.cursor.execute("CREATE TABLE user(uid INTEGER, username TEXT, password TEXT)")
-        self.cursor.execute("CREATE TABLE messages(mid INTEGER, uidsender INTEGER, uidreveiver INTEGER, content TEXT)")
-        
-        self.cursor.commit()
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS user(uid INTEGER, username TEXT, password TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS messages(mid INTEGER, uidsender INTEGER, uidreveiver INTEGER, content TEXT)")
+        self.db.commit()
         
     def add_user(self, uid, username, pwhash):
         self.cursor.execute("INSERT INTO user VALUES(?, ?, ?)", (uid, username, pwhash))
-        self.cursor.commit()
+        self.db.commit()
         
     def auth_user(self, username, pwhash):
         self.cursor.execute("SELECT * FROM user WHERE username=? AND password=?", (username, pwhash))
-        if self.cursor.rowcount == 1:
+        if self.cursor.fetchone() != None:
             return True
         return False
         
@@ -145,12 +179,13 @@ class databaseHandler:
             for item in uidReceiver:
                 self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.midpool.getNext(), uidSender, item, data))
         
-        self.cursor.commit()
+        self.db.commit()
     
     
     def get_last_mid(self):
-        self.cursor.execute("SELECT mid FROM messages ORDER BY DSC")
-        return self.cursor.fetchone()
+        #self.cursor.execute("SELECT mid FROM messages ORDER BY DSC")
+        #return self.cursor.fetchone()
+        return 0
 
 # Pool: controls integer id's        
         
