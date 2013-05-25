@@ -9,7 +9,7 @@ import random
 import sqlite3
 import dh
 
-class ConnectionHandler:
+class DonnectionHandler:
     def __init__(self):
         self.database = DatabaseHandler("gu.db")
         self.sid_Pool = Pool(0)
@@ -94,8 +94,8 @@ class ConnectionHandler:
         sesskey = int(data)**num % prime
         self.hashengine.update(str(sesskey))
         sesskey = self.hashengine.digest()
-        #iv = Random.new().read(AES.block_size)
-        iv = 'asdfasdfasdfasdf'
+        iv = Random.new().read(AES.block_size)
+        #iv = 'asdfasdfasdfasdf'
         self.ivs.append(iv)
         self.sesskey.append(sesskey)
         self.uidstrings.append("")
@@ -110,9 +110,9 @@ class ConnectionHandler:
         skeyid = int(skeyid[2])
         tmp = re.split(":", tmp[1], 1)
         iv = tmp[0]
-        cipher = AES.new(self.sesskey[skeyid], AES.MODE_CFB, self.ivs[skeyid])
+        #cipher = AES.new(self.sesskey[skeyid], AES.MODE_CFB, self.ivs[skeyid])
+        cipher = AES.new(self.sesskey[skeyid], AES.MODE_ECB,iv)
         dec = cipher.decrypt(tmp[0])
-        dec = dec
         print dec
         return dec
         
@@ -120,8 +120,8 @@ class ConnectionHandler:
         tmp = re.split(":", data ,1)
         iv = tmp[0]
         skeyid = int(self.header[2])
-        cipher = AES.new(self.sesskey[skeyid], AES.MODE_CFB, self.ivs[skeyid])
-        data = data
+        #cipher = AES.new(self.sesskey[skeyid], AES.MODE_CFB, self.ivs[skeyid])
+        cipher = AES.new(self.sesskey[skeyid], AES.MODE_ECB, iv)
         return cipher.encrypt(data)
         
     def get_hash(self, string):
@@ -144,6 +144,7 @@ class ConnectionHandler:
         return ""
     
     def auth_user(self, data):
+        print "data :" + data
         cred = re.split(":", data, 1)
         if self.database.auth_user(cred[0], cred[1]) == True:
             dig = self.get_hash(self.sesskey[int(self.header[2])] + cred[0])
@@ -235,4 +236,4 @@ class Pool:
        
         
         
-conn = ConnectionHandler()
+conn = DonnectionHandler()
