@@ -26,7 +26,7 @@ class connectionHandler:
             while True: 
                 komm, addr = serv_soc.accept() 
                 while True: 
-                    data = komm.recv(10000)
+                    data = komm.recv(8192)
 
                     if not data: 
                         komm.close() 
@@ -105,6 +105,7 @@ class connectionHandler:
         iv = tmp[0]
         cipher = Blowfish.new(self.sesskey[skeyid], Blowfish.MODE_CFB, "asdfasdf")
         dec = cipher.decrypt(tmp[0])
+        print dec
         return dec
         
     def encrypt(self, data):
