@@ -1,18 +1,18 @@
 import socket
 import re
 import sys
-from Crypto.Cipher import Blowfish
+import os
+from Crypto.Cipher import AES
 from Crypto import Random
 from Crypto.Hash import SHA256
-from Crypto import Random
 import random
 import sqlite3
 import dh
 
-class connectionHandler:
+class ConnectionHandler:
     def __init__(self):
-        self.database = databaseHandler("gu.db")
-        self.sid_pool = pool(0)
+        self.database = DatabaseHandler("gu.db")
+        self.sid_Pool = Pool(0)
         self.sesskey = []
         self.ivs = []
         self.uidstrings = []
@@ -82,7 +82,7 @@ class connectionHandler:
 
     def init_dh(self, data):
         print "a:  " + data
-        sessid = self.sid_pool.give_next()
+        sessid = self.sid_Pool.give_next()
         proot = 3
         #prime = 2959259
         prime = 13
@@ -90,11 +90,18 @@ class connectionHandler:
         b = proot**num % prime
         #b = dh.generate_b()
         print "b:  " + str(b)
-        resp = str(sessid) + ":" + str(b)
+        resp = str(sessid) + ":" + str(b) + ":"
         sesskey = int(data)**num % prime
-        self.sesskey.append(str(sesskey))
+        self.hashengine.update(str(sesskey))
+        sesskey = self.hashengine.digest()
+        #iv = Random.new().read(AES.block_size)
+        iv = 'asdfasdfasdfasdf'
+        self.ivs.append(iv)
+        self.sesskey.append(sesskey)
         self.uidstrings.append("")
+        resp += iv
         print "sesskey:  " + str(sesskey)
+        self.hashengine.update("")
         return resp
         
     def decrypt(self, data):
@@ -103,8 +110,9 @@ class connectionHandler:
         skeyid = int(skeyid[2])
         tmp = re.split(":", tmp[1], 1)
         iv = tmp[0]
-        cipher = Blowfish.new(self.sesskey[skeyid], Blowfish.MODE_CFB, "asdfasdf")
+        cipher = AES.new(self.sesskey[skeyid], AES.MODE_CFB, self.ivs[skeyid])
         dec = cipher.decrypt(tmp[0])
+        dec = dec
         print dec
         return dec
         
@@ -112,7 +120,8 @@ class connectionHandler:
         tmp = re.split(":", data ,1)
         iv = tmp[0]
         skeyid = int(self.header[2])
-        cipher = Blowfish.new(self.sesskey[skeyid], Blowfish.MODE_CFB, "asdfasdf")
+        cipher = AES.new(self.sesskey[skeyid], AES.MODE_CFB, self.ivs[skeyid])
+        data = data
         return cipher.encrypt(data)
         
     def get_hash(self, string):
@@ -145,11 +154,11 @@ class connectionHandler:
             
         
     
-class databaseHandler:
+class DatabaseHandler:
     def __init__(self, database):
         self.db = sqlite3.connect(database)
         self.cursor = self.db.cursor()
-        self.mid_pool = pool(0, self.get_last_mid())
+        self.mid_Pool = Pool(0, self.get_last_mid())
         self.init_db()
     
     def init_db(self):
@@ -174,11 +183,11 @@ class databaseHandler:
         if not isinstance(uidReceiver, list):
             if not isinstance(uidReceiver, int):
                 return False
-            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.midpool.getNext(), uidSender, uidReveiver, data))
+            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.midPool.getNext(), uidSender, uidReveiver, data))
             
         else:
             for item in uidReceiver:
-                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.midpool.getNext(), uidSender, item, data))
+                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.midPool.getNext(), uidSender, item, data))
         
         self.db.commit()
     
@@ -190,7 +199,7 @@ class databaseHandler:
 
 # Pool: controls integer id's        
         
-class pool:
+class Pool:
     
     ##
     # max_num = highest possible number - 0 for unlimited
@@ -226,4 +235,4 @@ class pool:
        
         
         
-conn = connectionHandler()
+conn = ConnectionHandler()
