@@ -5,16 +5,19 @@ import os
 from Crypto.Cipher import AES
 from Crypto import Random
 from Crypto.Hash import SHA256
+from Crypto.Util import Counter
 import random
 import sqlite3
 import dh
+import binascii
 
-class DonnectionHandler:
+class ConnectionHandler:
     def __init__(self):
         self.database = DatabaseHandler("gu.db")
         self.sid_Pool = Pool(0)
         self.sesskey = []
         self.ivs = []
+        self.ctr = []
         self.uidstrings = []
         self.hashengine = SHA256.new()
         
@@ -68,7 +71,6 @@ class DonnectionHandler:
         return re.split(":", data, 2)
         
     def build_pack(self, msg):
-        print "msg:" + msg
         package = "none" + ":" + "12.12.12" + ":" + self.header[2] + ";"
         iv = "asdf"
         package += self.encrypt(msg)
@@ -81,7 +83,6 @@ class DonnectionHandler:
         return True
 
     def init_dh(self, data):
-        print "a:  " + data
         sessid = self.sid_Pool.give_next()
         proot = 3
         #prime = 2959259
@@ -89,18 +90,18 @@ class DonnectionHandler:
         num = random.randrange(1, prime - 2, 1)
         b = proot**num % prime
         #b = dh.generate_b()
-        print "b:  " + str(b)
         resp = str(sessid) + ":" + str(b) + ":"
         sesskey = int(data)**num % prime
         self.hashengine.update(str(sesskey))
         sesskey = self.hashengine.digest()
         iv = Random.new().read(AES.block_size)
         #iv = 'asdfasdfasdfasdf'
+        ctr = Counter.new(128, initial_value=long(iv.encode("hex"), 16))
+        self.ctr.append(ctr)
         self.ivs.append(iv)
         self.sesskey.append(sesskey)
         self.uidstrings.append("")
-        resp += iv
-        print "sesskey:  " + str(sesskey)
+        resp += binascii.hexlify(iv)
         self.hashengine.update("")
         return resp
         
@@ -110,18 +111,15 @@ class DonnectionHandler:
         skeyid = int(skeyid[2])
         tmp = re.split(":", tmp[1], 1)
         iv = tmp[0]
-        #cipher = AES.new(self.sesskey[skeyid], AES.MODE_CFB, self.ivs[skeyid])
-        cipher = AES.new(self.sesskey[skeyid], AES.MODE_ECB,iv)
+        cipher = AES.new(self.sesskey[skeyid], AES.MODE_CTR, counter=self.ctr[skeyid])
         dec = cipher.decrypt(tmp[0])
-        print dec
         return dec
         
     def encrypt(self, data):
         tmp = re.split(":", data ,1)
         iv = tmp[0]
         skeyid = int(self.header[2])
-        #cipher = AES.new(self.sesskey[skeyid], AES.MODE_CFB, self.ivs[skeyid])
-        cipher = AES.new(self.sesskey[skeyid], AES.MODE_ECB, iv)
+        cipher = AES.new(self.sesskey[skeyid], AES.MODE_CTR, counter=self.ctr[skeyid])
         return cipher.encrypt(data)
         
     def get_hash(self, string):
@@ -134,7 +132,7 @@ class DonnectionHandler:
         sid = int(self.header[2])
         tmp = re.split(":", data, 1)
         if self.uidstrings[sid] == tmp[0]:
-            print tmp[1]
+            # tbd
         else:
             print "error - wrong uidstring :" + tmp[0]
         return ""
@@ -144,7 +142,6 @@ class DonnectionHandler:
         return ""
     
     def auth_user(self, data):
-        print "data :" + data
         cred = re.split(":", data, 1)
         if self.database.auth_user(cred[0], cred[1]) == True:
             dig = self.get_hash(self.sesskey[int(self.header[2])] + cred[0])
@@ -236,4 +233,4 @@ class Pool:
        
         
         
-conn = DonnectionHandler()
+conn = ConnectionHandler()
