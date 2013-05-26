@@ -19,6 +19,7 @@ class ConnectionHandler:
         self.ivs = []
         self.ctr = []
         self.uidstrings = []
+        self.users = []
         self.hashengine = SHA256.new()
         
         serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -68,10 +69,13 @@ class ConnectionHandler:
             
             
     def parse_header(self, data):
-        return re.split(":", data, 2)
+        header = re.split(":", data, 2)
+        if not header[0] == "dhex":
+            header[2] = int(header[2])
+        return header
         
     def build_pack(self, msg):
-        package = "none" + ":" + "12.12.12" + ":" + self.header[2] + ";"
+        package = "none" + ":" + "12.12.12" + ":" + str(self.header[2]) + ";"
         iv = "asdf"
         package += self.encrypt(msg)
         return package
@@ -89,18 +93,17 @@ class ConnectionHandler:
         prime = 13
         num = random.randrange(1, prime - 2, 1)
         b = proot**num % prime
-        #b = dh.generate_b()
         resp = str(sessid) + ":" + str(b) + ":"
         sesskey = int(data)**num % prime
         self.hashengine.update(str(sesskey))
         sesskey = self.hashengine.digest()
         iv = Random.new().read(AES.block_size)
-        #iv = 'asdfasdfasdfasdf'
         ctr = Counter.new(128, initial_value=long(iv.encode("hex"), 16))
         self.ctr.append(ctr)
         self.ivs.append(iv)
         self.sesskey.append(sesskey)
         self.uidstrings.append("")
+        self.users.append("")
         resp += binascii.hexlify(iv)
         self.hashengine.update("")
         return resp
@@ -110,15 +113,12 @@ class ConnectionHandler:
         skeyid = re.split(":", tmp[0], 2)
         skeyid = int(skeyid[2])
         tmp = re.split(":", tmp[1], 1)
-        iv = tmp[0]
         cipher = AES.new(self.sesskey[skeyid], AES.MODE_CTR, counter=self.ctr[skeyid])
         dec = cipher.decrypt(tmp[0])
         return dec
         
     def encrypt(self, data):
-        tmp = re.split(":", data ,1)
-        iv = tmp[0]
-        skeyid = int(self.header[2])
+        skeyid = self.header[2]
         cipher = AES.new(self.sesskey[skeyid], AES.MODE_CTR, counter=self.ctr[skeyid])
         return cipher.encrypt(data)
         
@@ -127,12 +127,27 @@ class ConnectionHandler:
         digest = self.hashengine.hexdigest()
         self.hashengine.update("")
         return digest
+
+    def auth_user(self, data):
+        cred = re.split(":", data, 1)
+        if self.database.auth_user(cred[0], cred[1]) == True:
+            dig = self.get_hash(self.sesskey[self.header[2]] + cred[0])
+            self.uidstrings[self.header[2]] = dig
+            self.users[self.header[2]] = self.database.get_user_id(cred[0])
+            return dig
+        else:
+            return "wrong creditials"
         
     def recv_msg(self, data):
-        sid = int(self.header[2])
-        tmp = re.split(":", data, 1)
+        sid = self.header[2]
+        tmp = re.split(":", data, 2)
+        if len(tmp) != 3:
+            return "False"
         if self.uidstrings[sid] == tmp[0]:
-            # tbd
+            rcv_uid = self.database.get_user_id(tmp[1])
+            snd_uid = self.users[self.header[2]]
+            if not self.database.rcv_message(snd_uid, rcv_uid, tmp[2]):
+                print "error in rcv_message"
         else:
             print "error - wrong uidstring :" + tmp[0]
         return ""
@@ -140,15 +155,6 @@ class ConnectionHandler:
     def recv_file(self, data):
         
         return ""
-    
-    def auth_user(self, data):
-        cred = re.split(":", data, 1)
-        if self.database.auth_user(cred[0], cred[1]) == True:
-            dig = self.get_hash(self.sesskey[int(self.header[2])] + cred[0])
-            self.uidstrings[int(self.header[2])] = dig
-            return dig
-        else:
-            return "wrong creditials"
             
         
     
@@ -156,7 +162,7 @@ class DatabaseHandler:
     def __init__(self, database):
         self.db = sqlite3.connect(database)
         self.cursor = self.db.cursor()
-        self.mid_Pool = Pool(0, self.get_last_mid())
+        self.mid_Pool = Pool(0, self.get_start_mid())
         self.init_db()
     
     def init_db(self):
@@ -173,6 +179,14 @@ class DatabaseHandler:
         if self.cursor.fetchone() != None:
             return True
         return False
+
+    def get_user_id(self, username):
+        print username
+        self.cursor.execute("SELECT uid FROM user WHERE username=?", [username])
+        result = self.cursor.fetchone()
+        if result == None:
+            return False
+        return result[0]
         
     def rcv_message(self, uidSender, uidReceiver, data):
         if not isinstance(uidSender, int): return False
@@ -181,19 +195,19 @@ class DatabaseHandler:
         if not isinstance(uidReceiver, list):
             if not isinstance(uidReceiver, int):
                 return False
-            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.midPool.getNext(), uidSender, uidReveiver, data))
+            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.getNext(), uidSender, uidReveiver, data))
             
         else:
             for item in uidReceiver:
-                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.midPool.getNext(), uidSender, item, data))
+                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.getNext(), uidSender, item, data))
         
         self.db.commit()
     
     
-    def get_last_mid(self):
-        #self.cursor.execute("SELECT mid FROM messages ORDER BY DSC")
-        #return self.cursor.fetchone()
-        return 0
+    def get_start_mid(self):
+        self.cursor.execute("SELECT mid FROM messages ORDER BY mid DESC")
+        result = self.cursor.fetchone()
+        return (result[0] + 1)
 
 # Pool: controls integer id's        
         
