@@ -12,15 +12,11 @@ import dh
 import binascii
 
 class ConnectionHandler:
+
     def __init__(self):
         self.database = DatabaseHandler("gu.db")
-        self.sid_Pool = Pool(0)
-        self.sesskey = []
-        self.ivs = []
-        self.ctr = []
-        self.uidstrings = []
+        self.crypt = EncryptionHandler()
         self.users = []
-        self.hashengine = SHA256.new()
         
         serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         serv_soc.bind(("", int(sys.argv[1])))
@@ -36,8 +32,8 @@ class ConnectionHandler:
                         komm.close() 
                         break
                         
-                    if self.is_encrypted(data):
-                        body = self.decrypt(data)
+                    if self.crypt.is_encrypted(data):
+                        body = self.crypt.decrypt(data)
 
                     data = re.split(";", data, 1)
                     self.header = self.parse_header(data[0])
@@ -66,6 +62,11 @@ class ConnectionHandler:
                     
         finally:
             serv_soc.close()
+
+    def init_dh(self, data):
+        resp = self.crypt.init_dh(data)
+        self.users.append("")
+        return resp
             
             
     def parse_header(self, data):
@@ -77,9 +78,50 @@ class ConnectionHandler:
     def build_pack(self, msg):
         package = "none" + ":" + "12.12.12" + ":" + str(self.header[2]) + ";"
         iv = "asdf"
-        package += self.encrypt(msg)
+        package += self.crypt.encrypt(self.header[2], msg)
         return package
         
+
+
+    def auth_user(self, data):
+        cred = re.split(":", data, 1)
+        if self.database.auth_user(cred[0], cred[1]) == True:
+            dig = self.crypt.get_hash(self.sesskey[self.header[2]] + cred[0])
+            self.crypt.add_uidstring(self.header[2], dig)
+            self.users[self.header[2]] = self.database.crypt.get_user_id(cred[0])
+            return dig
+        else:
+            return "wrong creditials"
+        
+    def recv_msg(self, data):
+        sid = self.header[2]
+        tmp = re.split(":", data, 2)
+        if len(tmp) != 3:
+            return "False"
+        if self.crypt.check_uidstring(sid, tmp[0]):
+            rcv_uid = self.database.get_user_id(tmp[1])
+            snd_uid = self.users[self.header[2]]
+            if not self.database.rcv_message(snd_uid, rcv_uid, tmp[2]):
+                print "error in rcv_message"
+        else:
+            print "error - wrong uidstring :" + tmp[0]
+        return ""
+        
+    def recv_file(self, data):
+        
+        return ""
+
+
+class EncryptionHandler:
+
+    def __init__(self):
+        self.ivs = []
+        self.ctr = []
+        self.sesskey = []
+        self.uidstrings = []
+        self.hashengine = SHA256.new()
+        self.sid_Pool = Pool(0)
+
     def is_encrypted(self, data):
         tmp = re.split(":", data, 2)
         if tmp[0] == "dhex":
@@ -103,7 +145,6 @@ class ConnectionHandler:
         self.ivs.append(iv)
         self.sesskey.append(sesskey)
         self.uidstrings.append("")
-        self.users.append("")
         resp += binascii.hexlify(iv)
         self.hashengine.update("")
         return resp
@@ -117,8 +158,7 @@ class ConnectionHandler:
         dec = cipher.decrypt(tmp[0])
         return dec
         
-    def encrypt(self, data):
-        skeyid = self.header[2]
+    def encrypt(self, skeyid, data):
         cipher = AES.new(self.sesskey[skeyid], AES.MODE_CTR, counter=self.ctr[skeyid])
         return cipher.encrypt(data)
         
@@ -128,34 +168,14 @@ class ConnectionHandler:
         self.hashengine.update("")
         return digest
 
-    def auth_user(self, data):
-        cred = re.split(":", data, 1)
-        if self.database.auth_user(cred[0], cred[1]) == True:
-            dig = self.get_hash(self.sesskey[self.header[2]] + cred[0])
-            self.uidstrings[self.header[2]] = dig
-            self.users[self.header[2]] = self.database.get_user_id(cred[0])
-            return dig
-        else:
-            return "wrong creditials"
-        
-    def recv_msg(self, data):
-        sid = self.header[2]
-        tmp = re.split(":", data, 2)
-        if len(tmp) != 3:
-            return "False"
-        if self.uidstrings[sid] == tmp[0]:
-            rcv_uid = self.database.get_user_id(tmp[1])
-            snd_uid = self.users[self.header[2]]
-            if not self.database.rcv_message(snd_uid, rcv_uid, tmp[2]):
-                print "error in rcv_message"
-        else:
-            print "error - wrong uidstring :" + tmp[0]
-        return ""
-        
-    def recv_file(self, data):
-        
-        return ""
-            
+    def add_uidstring(self, index, string):
+        self.uidstrings[index] = string
+
+    def check_uidstring(self, index, string):
+        if self.uidstrings[index] == string:
+            return True
+        return False
+
         
     
 class DatabaseHandler:
