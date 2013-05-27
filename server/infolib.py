@@ -1,8 +1,11 @@
 from Crypto.Cipher import AES as AES
 from Crypto.Hash import SHA256 as SHA256
 from Crypto.Util import Counter as Counter
+from Crypto import Random
 import binascii
 import sqlite3
+from re import split
+from random import randrange
 
 
 
@@ -28,7 +31,7 @@ class EncryptionHandler:
         @type data: str
         @return: Boolean Erfolg
         """
-        tmp = re.split(":", data, 2)
+        tmp = split(":", data, 2)
         if tmp[0] == "dhex":
             return False
         return True
@@ -50,7 +53,7 @@ class EncryptionHandler:
         #prime = 2959259
         prime = 13
         proot = 3
-        num = random.randrange(1, prime - 2, 1)
+        num = randrange(1, prime - 2, 1)
         secret = proot**num % prime
         resp = str(sessid) + ":" + str(secret) + ":"
         sesskey = self.generate_sesskey(num, int(data), prime)
@@ -160,8 +163,8 @@ class DatabaseHandler:
         """
         self.db = sqlite3.connect(database)
         self.cursor = self.db.cursor()
-        self.mid_Pool = Pool(0, self.get_start_mid())
         self.init_db()
+        self.mid_Pool = Pool(0, self.get_start_mid())
     
     def init_db(self):
         """
@@ -258,6 +261,8 @@ class DatabaseHandler:
         """
         self.cursor.execute("SELECT mid FROM messages ORDER BY mid DESC")
         result = self.cursor.fetchone()
+        if result == None:
+            return 0
         return (result[0] + 1)
 
 
