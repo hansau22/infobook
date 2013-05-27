@@ -226,18 +226,42 @@ class ConnectionHandler:
         sid = self.header[2]
         tmp = split(":", data, 2)
         if len(tmp) != 3:
-            return "Not long enough"
+            return "error - not-long-enough - MESG"
 
         if self.check_uidstring(sid, tmp[0]):
             rcv_uid = self.database.get_user_id(tmp[1])
             snd_uid = self.users[self.header[2]]
             print "writing message:" + tmp[2]
             if not self.database.rcv_message(snd_uid, rcv_uid, tmp[2]):
-                return "error - server-application-error"
-            return "success"
+                return "error - server-application-error - MESG"
+            return "success - MESG"
         else:
-            return "error - wrong-uidstring"
+            return "error - wrong-uidstring - MESG"
 
+
+    def recv_brdc(self, data):
+        """
+        Traegt eine Broadcast-Nachricht in die Datenbank ein.
+
+        @param data: Datenpaket des Clients ohne Kopfinformationen
+        @type data: str
+
+        @return: str - Erfolgs-/Fehlermeldung
+        """
+        sid = self.header[2]
+        tmp = split(":", data, 2)
+        if len(tmp) != 3:
+            return "Not long enough - BRDC"
+
+        if self.check_uidstring(sid, tmp[0]):
+            rcv_gid = self.database.get_group_id(tmp[1])
+            snd_uid = self.users[self.header[2]]
+            print "writing message:" + tmp[2]
+            if not self.database.rcv_brdc_message(snd_uid, rcv_gid, tmp[2]):
+                return "error - server-application-error - BRDC"
+            return "success - BRDC"
+        else:
+            return "error - wrong-uidstring - BRDC"
 
         
     def recv_file(self, data):
@@ -272,6 +296,7 @@ class DatabaseHandler:
         self.cursor = self.db.cursor()
         self.init_db()
         self.mid_Pool = Pool(0, self.get_start_mid())
+        self.bid_Pool = Pool(0, self.get_start_brdc_mid())
 
 
     
@@ -283,6 +308,9 @@ class DatabaseHandler:
         """
         self.cursor.execute("CREATE TABLE IF NOT EXISTS user(uid INTEGER, username TEXT, password TEXT)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS messages(mid INTEGER, uidsender INTEGER, uidreveiver INTEGER, content TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS brdc_message(bid INTEGER, uidsender INTEGER, gidreveiver INTEGER, content TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS brdc_groups(gid Integer, member Integer, name Text)")
+
         self.db.commit()
 
 
@@ -342,6 +370,21 @@ class DatabaseHandler:
         return result[0]
 
 
+    def get_group_id(self, name):
+        """
+        Gibt die Gruppen-ID einer Gruppe zurueck
+
+        @param username: Gruppenname
+        @type username: str
+
+        @return: str Gruppen-ID, False bei unbekannter Gruppe
+        """
+        self.cursor.execute("SELECT * FROM brdc_groups WHERE name=?", [name])
+        result = self.cursor.fetchone()
+        if result == None:
+            return False
+        return result[0]
+
         
     def rcv_message(self, uidSender, uidReceiver, data):
         """
@@ -371,6 +414,29 @@ class DatabaseHandler:
         return True
 
 
+    def rcv_brdc_message(self, uidSender, gidReceiver, data):
+            """
+            Traegt eine Broadcast-Nachricht in die Datenbank ein
+
+            @param uidSender: Nutzer-ID des Senders
+            @type uidSender: int
+
+            @param uidReceiver: Gruppen-ID des Empfaengers
+            @type uidReceiver: int
+
+            @param data: Nachricht
+            @type data: Nachricht
+
+            @return: Boolean Erfolg
+            """
+            if not isinstance(uidSender, int): return False
+            if not isinstance(gidReceiver, int): return False
+            if not isinstance(data, str): return False
+            
+            self.cursor.execute("INSERT INTO brdc_message VALUES(?, ?, ?, ?)", (self.bid_Pool.give_next(), uidSender, gidReceiver, data))
+            self.db.commit()
+            return True
+
     
     def get_start_mid(self):
         """
@@ -384,6 +450,19 @@ class DatabaseHandler:
             return 0
         return (result[0] + 1)
 
+
+
+    def get_start_brdc_mid(self):
+        """
+        Gibt die erste freie Broadcast-Nachrichten-ID zurueck
+
+        @return: int ID
+        """
+        self.cursor.execute("SELECT bid FROM brdc_message ORDER BY bid DESC")
+        result = self.cursor.fetchone()
+        if result == None:
+            return 0
+        return (result[0] + 1)
 
 
 
