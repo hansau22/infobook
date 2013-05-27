@@ -1,10 +1,9 @@
 import socket
-import re
 import sys
 import os
-import random
 import dh
 from infolib import *
+from re import split
 
 class ConnectionHandler:
 
@@ -40,7 +39,7 @@ class ConnectionHandler:
                     if self.crypt.is_encrypted(data):
                         body = self.decrypt(data)
 
-                    data = re.split(";", data, 1)
+                    data = split(";", data, 1)
                     self.header = self.parse_header(data[0])
                     data = data[1]
                     
@@ -78,10 +77,10 @@ class ConnectionHandler:
         return ret[3]
 
     def decrypt(self, data):
-        tmp = re.split(";", data, 1)
-        sid = re.split(":", tmp[0], 2)
+        tmp = split(";", data, 1)
+        sid = split(":", tmp[0], 2)
         sid = int(sid[2])
-        tmp = re.split(":", tmp[1], 1)
+        tmp = split(":", tmp[1], 1)
         data = self.crypt.decrypt(self.sesskey[sid], self.ctr[sid], tmp[0])
         return data
             
@@ -90,7 +89,7 @@ class ConnectionHandler:
         return self.crypt.encrypt(self.sesskey[sid], self.ctr[sid], data)
             
     def parse_header(self, data):
-        header = re.split(":", data, 2)
+        header = split(":", data, 2)
         if not header[0] == "dhex":
             header[2] = int(header[2])
         return header
@@ -103,14 +102,14 @@ class ConnectionHandler:
 
 
     def auth_user(self, data):
-        cred = re.split(":", data, 1)
+        cred = split(":", data, 1)
         if self.database.auth_user(cred[0], cred[1]) == True:
             dig = self.crypt.get_hash(self.sesskey[self.header[2]] + cred[0])
             self.uidstrings[self.header[2]] = dig
             self.users[self.header[2]] = self.database.get_user_id(cred[0])
             return dig
         else:
-            return "wrong creditials"
+            return "error - wrong-creditials"
 
 
     def check_uidstring(self, index, string):
@@ -120,18 +119,19 @@ class ConnectionHandler:
         
     def recv_msg(self, data):
         sid = self.header[2]
-        tmp = re.split(":", data, 2)
+        tmp = split(":", data, 2)
         if len(tmp) != 3:
             return "Not long enough"
 
         if self.check_uidstring(sid, tmp[0]):
             rcv_uid = self.database.get_user_id(tmp[1])
             snd_uid = self.users[self.header[2]]
+            print "writing message:" + tmp[2]
             if not self.database.rcv_message(snd_uid, rcv_uid, tmp[2]):
-                print "error in rcv_message"
+                return "error - server-application-error"
+            return "success"
         else:
-            print "error - wrong uidstring :" + tmp[0]
-        return ""
+            return "error - wrong-uidstring"
         
     def recv_file(self, data):
         
