@@ -217,7 +217,7 @@ class DatabaseHandler:
 
         @return: str Nutzer-ID, False bei unbekanntem Nutzer
         """
-        self.cursor.execute("SELECT uid FROM user WHERE username=?", [username])
+        self.cursor.execute("SELECT * FROM user WHERE username=?", [username])
         result = self.cursor.fetchone()
         if result == None:
             return False
@@ -296,8 +296,9 @@ class Pool:
             self.cur += 1
             return ret
         
-        if len(self.free) < 0:
+        if len(self.free) < 1:
             return False
+
         return self.free.pop()
     
     def remove(self, num):
