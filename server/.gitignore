@@ -1,3 +1,4 @@
 gu.db
 setup.py
 build
+*.pyc
