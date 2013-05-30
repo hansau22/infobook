@@ -192,7 +192,7 @@ class ConnectionHandler:
             self.users[self.header[2]] = self.database.get_user_id(cred[0])
             return dig
         else:
-            return "error - wrong-creditials"
+            return "error - wrong-credentials"
 
 
 
