@@ -15,7 +15,7 @@ from re import split
 class ConnectionHandler:
     """
     Infolib.ConnectionHandler ist eine Klasse, die die Grundfunktionalitaet des Infoservers bereitstellt.
-    Sie bindet einen Port, an dem alle Verbindungen eigehen und verteilt die Pakete nach den entsprechenden Kopfinformationen
+    Sie bindet einen Port, an dem alle Verbindungen eigehen und verteilt die Pakete nach den entsprechenden Kopfinformationen.
     Sie baut auf allen anderen Klassen in der Infolib auf.
 
     Eine Verwendung ausserhalb des Infobook-Projektes wird nicht empfohlen.
