@@ -31,18 +31,18 @@ class ConnectionHandler:
         @return: None
         """
 
-
         self.database = DatabaseHandler("gu.db")
         self.crypt = EncryptionHandler()
-        self.users = []
-
-        self.ivs = []
-        self.ctr = []
-        self.sesskey = []
-        self.uidstrings = []
         self.sid_Pool = Pool(0)
+
+        self.users = []         # Nutzer, die zum Index Session-ID gehoeren
+        self.ivs = []           # Initialiserungsvektoren
+        self.ctr = []           # Counter
+        self.sesskey = []       # Sessionkeys
+        self.uidstrings = []    # User-ID-Strings
         
         serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
         if len(sys.argv) < 2:
             serv_soc.bind(("", 32323))
         else:
@@ -62,11 +62,12 @@ class ConnectionHandler:
                     if self.crypt.is_encrypted(data):
                         body = self.decrypt(data)
 
+                    # Kopfdaten und Nutzdaten trennen
                     data = split(";", data, 1)
                     self.header = self.parse_header(data[0])
                     data = data[1]
                     
-                    resp = "invalid request"
+                    resp = "invalid request" # Default-Antwort
 
                     if self.header[0] == "dhex":
                         resp = self.init_dh(data)                      
@@ -79,6 +80,8 @@ class ConnectionHandler:
                     elif self.header[0] == "brdc":
                         resp = self.recv_brdc(body)
                     
+
+                    # Antwortpaket senden
                     if self.header[0] == "dhex":
                         komm.send(resp)
                     else:
@@ -101,12 +104,17 @@ class ConnectionHandler:
 
         @return: str - Sessionkey
         """
+
+        # DH-Antwort (B) auf die Anfrage (A)
         ret = self.crypt.init_dh_b(self.sid_Pool.give_next(),data)
+
+        # Alle Felder fuer die neu Initialiserte Session reservieren (befuellen)
         self.users.append("")
         self.uidstrings.append("")
         self.ivs.append(ret[0])
         self.ctr.append(ret[1])
         self.sesskey.append(ret[2])
+
         return ret[3]
 
 
@@ -121,11 +129,10 @@ class ConnectionHandler:
         @return: str - Unverschluesseltes Paket ohne Kopfinformationen
         """
 
-        tmp = split(";", data, 1)
-        sid = split(":", tmp[0], 2)
+        tmp = split(";", data, 1)       # ";" Seperiert Nutz- und Kopfdaten
+        sid = split(":", tmp[0], 2)     # Extrahiere Session-ID
         sid = int(sid[2])
-        tmp = split(":", tmp[1], 1)
-        data = self.crypt.decrypt(self.sesskey[sid], self.ctr[sid], tmp[0])
+        data = self.crypt.decrypt(self.sesskey[sid], self.ctr[sid], tmp[1])
         return data
 
 
@@ -170,7 +177,6 @@ class ConnectionHandler:
         @return: str - Nachrichtenpaket mit Kopfinformationen
         """
         package = "none" + ":" + "12.12.12" + ":" + str(self.header[2]) + ";"
-        iv = "asdf"
         package += self.encrypt(msg)
         return package
 
@@ -187,9 +193,13 @@ class ConnectionHandler:
         """
         cred = split(":", data, 1)
         if self.database.auth_user(cred[0], cred[1]) == True:
+
+            # User-ID String erzeugen
             dig = self.crypt.get_hash(self.sesskey[self.header[2]] + cred[0])
+
             self.uidstrings[self.header[2]] = dig
             self.users[self.header[2]] = self.database.get_user_id(cred[0])
+
             return dig
         else:
             return "error - wrong-credentials"
@@ -225,6 +235,8 @@ class ConnectionHandler:
         """
         sid = self.header[2]
         tmp = split(":", data, 2)
+
+        # Nicht alle Felder gegeben
         if len(tmp) != 3:
             return "error - not-long-enough - MESG"
 
@@ -250,6 +262,8 @@ class ConnectionHandler:
         """
         sid = self.header[2]
         tmp = split(":", data, 2)
+
+        # Nicht alle Felder gegeben
         if len(tmp) != 3:
             return "Not long enough - BRDC"
 
@@ -374,8 +388,8 @@ class DatabaseHandler:
         """
         Gibt die Gruppen-ID einer Gruppe zurueck
 
-        @param username: Gruppenname
-        @type username: str
+        @param name: Gruppenname
+        @type name: str
 
         @return: str Gruppen-ID, False bei unbekannter Gruppe
         """
@@ -404,6 +418,7 @@ class DatabaseHandler:
         if not isinstance(uidSender, int): return False
         if not isinstance(data, str): return False
         
+        # Wiederholen, wenn uidReceiver eine liste ist
         if not isinstance(uidReceiver, list):
             self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, uidReceiver, data))
         else:
@@ -421,8 +436,8 @@ class DatabaseHandler:
             @param uidSender: Nutzer-ID des Senders
             @type uidSender: int
 
-            @param uidReceiver: Gruppen-ID des Empfaengers
-            @type uidReceiver: int
+            @param gidReceiver: Gruppen-ID des Empfaengers
+            @type gidReceiver: int
 
             @param data: Nachricht
             @type data: Nachricht
@@ -492,6 +507,7 @@ class EncryptionHandler:
         @return: Boolean Erfolg
         """
         tmp = split(":", data, 2)
+        # Nur DHEX-Pakete sind unverschluesselt
         if tmp[0] == "dhex":
             return False
         return True
@@ -514,13 +530,20 @@ class EncryptionHandler:
         #prime = 2959259
         prime = 13
         proot = 3
-        num = randrange(1, prime - 2, 1)
-        secret = proot**num % prime
-        resp = str(sessid) + ":" + str(secret) + ":"
-        sesskey = self.generate_sesskey(num, int(data), prime)
+        # Eigenes Geheimnis erzeugen
+        secret = randrange(1, prime - 2, 1)
+        # B erzeugen
+        b = proot**secret % prime
+        # B uebersenden
+        resp = str(sessid) + ":" + str(b) + ":"
+        # Sessionkey aus den Uebertragenen Daten (A) generieren
+        sesskey = self.generate_sesskey(secret, int(data), prime)
 
+        # Initialisierungsvektor erstellen
         iv = Random.new().read(AES.block_size)
+        # Initialisierungsvektor Hex-Encodieren und uebersenden
         resp += binascii.hexlify(iv)
+        # Counter erstellen
         ctr = Counter.new(128, initial_value=long(iv.encode("hex"), 16))
 
         ret = []
@@ -547,8 +570,9 @@ class EncryptionHandler:
 
         @return: int - Sessionkey
         """
-
         sesskey = public**secret % prime
+
+        # Ergebnis Hashen
         self.hashengine.update(str(sesskey))
         sesskey = self.hashengine.digest()
         self.hashengine.update("")
