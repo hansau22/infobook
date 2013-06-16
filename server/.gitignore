@@ -2,3 +2,4 @@ gu.db
 setup.py
 build
 *.pyc
+infobook.sublime*
