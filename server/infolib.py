@@ -75,6 +75,8 @@ class ConnectionHandler:
                         resp = self.auth_user(body)
                     elif self.header[0] == "mesg":
                         resp = self.recv_msg(body)
+                    elif self.header[0] == "getmsg":
+                        resp = self.get_msg(body)
                     elif self.header[0] == "file":
                         resp = self.recv_file(body)
                     elif self.header[0] == "brdc":
@@ -249,6 +251,25 @@ class ConnectionHandler:
             return "success - MESG"
         else:
             return "error - wrong-uidstring - MESG"
+
+
+
+    def get_msg(self, data):
+        """
+        Gibt dem Client die Nachrichten durch. 
+
+        @param data: String mit der letzten MID, die der Client an den Server gibt.
+        @type data: str
+
+        @return: Array - Nachrichten
+        """
+
+        data = int(data)
+        messages = self.database.get_messages_by_last_mid(data)
+
+
+
+
 
 
     def recv_brdc(self, data):
@@ -427,6 +448,33 @@ class DatabaseHandler:
         
         self.db.commit()
         return True
+
+
+
+    def get_messages_by_last_mid(self, uidReceiver, last_mid):
+        """
+        Sendet dem Client die neuen Nachrichten.
+        Alle Nachrichten sind neu, wenn sie eine groessere MID als die uebergebene hat.
+
+        @param uidReceiver: Empfaenger der Nachrichten
+        @type uidReceiver: str
+
+        @param last_mid: Letzte bekannte MID
+        @type last_mdi: int
+
+        @return Array - [Sender(str), Nachrichten(str)]
+        """
+
+        self.cursor.execute("SELECT uidSender, content FROM messages WHERE MID > ?", str(last_mid))
+        
+        ret_value = []
+        result = self.cursor.fetchone()
+        while result != None:
+            ret_value.append(result)
+            result = self.cursor.fetchone()
+
+        return ret_value
+
 
 
     def rcv_brdc_message(self, uidSender, gidReceiver, data):
