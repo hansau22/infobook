@@ -75,12 +75,13 @@ class ConnectionHandler:
                         resp = self.auth_user(body)
                     elif self.header[0] == "mesg":
                         resp = self.recv_msg(body)
-                    elif self.header[0] == "getmsg":
+                    elif self.header[0] == "getmesg":
                         resp = self.get_msg(body)
                     elif self.header[0] == "file":
                         resp = self.recv_file(body)
                     elif self.header[0] == "brdc":
                         resp = self.recv_brdc(body)
+                    elif self.header[0] == "getbrdc"
                     
 
                     # Antwortpaket senden
@@ -256,20 +257,30 @@ class ConnectionHandler:
 
     def get_msg(self, data):
         """
-        Gibt dem Client die Nachrichten durch. 
+        Gibt dem Client die Nachrichten zurueck. 
 
-        @param data: String mit der letzten MID, die der Client an den Server gibt.
+        @param data: Letzte MID, die der Client an den Server gibt.
         @type data: str
 
         @return: Array - Nachrichten
         """
 
-        data = int(data)
-        messages = self.database.get_messages_by_last_mid(data)
+        messages = self.database.get_messages_by_last_mid(self.header[2], data)
 
 
 
 
+    def get_brdc(self, data):
+        """
+        Gibt dem Client die Gruppennachrichten zurueck.
+
+        @param data: Letzte GID, die der Client an den Server gibt.
+        @type data: str
+
+        @return: Array - Nachrichten
+        """
+
+        messages = self.database.get_messages_by_last_gid(self.header[2], data)
 
 
     def recv_brdc(self, data):
@@ -281,7 +292,12 @@ class ConnectionHandler:
 
         @return: str - Erfolgs-/Fehlermeldung
         """
-        sid = self.header[2]
+        sid = self.headeG[2]
+        @type data: str
+
+        @return: Array - Nachrichten
+        
+
         tmp = split(":", data, 2)
 
         # Nicht alle Felder gegeben
@@ -297,6 +313,7 @@ class ConnectionHandler:
             return "success - BRDC"
         else:
             return "error - wrong-uidstring - BRDC"
+
 
         
     def recv_file(self, data):
@@ -342,8 +359,8 @@ class DatabaseHandler:
         @return: None
         """
         self.cursor.execute("CREATE TABLE IF NOT EXISTS user(uid INTEGER, username TEXT, password TEXT)")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS messages(mid INTEGER, uidsender INTEGER, uidreveiver INTEGER, content TEXT)")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS brdc_message(bid INTEGER, uidsender INTEGER, gidreveiver INTEGER, content TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS messages(mid INTEGER, uidsender INTEGER, uidreceiver INTEGER, content TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS brdc_messages(bid INTEGER, uidsender INTEGER, gidreceiver INTEGER, content TEXT)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS brdc_groups(gid Integer, member Integer, name Text)")
 
         self.db.commit()
@@ -460,13 +477,39 @@ class DatabaseHandler:
         @type uidReceiver: str
 
         @param last_mid: Letzte bekannte MID
-        @type last_mdi: int
+        @type last_mid: int
 
         @return Array - [Sender(str), Nachrichten(str)]
         """
 
         self.cursor.execute("SELECT uidSender, content FROM messages WHERE MID > ?", str(last_mid))
         
+        ret_value = []
+        result = self.cursor.fetchone()
+        while result != None:
+            ret_value.append(result)
+            result = self.cursor.fetchone()
+
+        return ret_value
+
+
+
+    def get_messages_by_last_gid(self, uidReceiver, last_gid):
+        """
+        Sendet dem Client die neuen Gruppennachrichten.
+        Alle Gruppennachrichten sind neu, wenn sie eine groessere GID als die uebergebene hat.
+
+        @param uidReceiver: Empfaenger der Gruppennachrichten
+        @type uidReceiver: str
+
+        @param last_gid: Letzte bekannte GID
+        @type last_gid: int
+
+        @return Array - [Sender(str), Gruppennachrichten(str)]
+        """
+
+        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM brdc_messages WHERE mid > ?", str(last_gid))
+
         ret_value = []
         result = self.cursor.fetchone()
         while result != None:
@@ -496,7 +539,7 @@ class DatabaseHandler:
             if not isinstance(gidReceiver, int): return False
             if not isinstance(data, str): return False
             
-            self.cursor.execute("INSERT INTO brdc_message VALUES(?, ?, ?, ?)", (self.bid_Pool.give_next(), uidSender, gidReceiver, data))
+            self.cursor.execute("INSERT INTO brdc_messages VALUES(?, ?, ?, ?)", (self.bid_Pool.give_next(), uidSender, gidReceiver, data))
             self.db.commit()
             return True
 
@@ -521,7 +564,7 @@ class DatabaseHandler:
 
         @return: int ID
         """
-        self.cursor.execute("SELECT bid FROM brdc_message ORDER BY bid DESC")
+        self.cursor.execute("SELECT bid FROM brdc_messages ORDER BY bid DESC")
         result = self.cursor.fetchone()
         if result == None:
             return 0
