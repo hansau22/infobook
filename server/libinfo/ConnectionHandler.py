@@ -3,12 +3,14 @@ from  libinfo.DatabaseHandler import DatabaseHandler
 #from  libinfo import DatabaseHandler
 from  libinfo.Pool import Pool
 
-import binascii
 import socket
+import select
 import sys
 import os
+import string
 
 from re import split
+from random import choice
 
 
 class ConnectionHandler:
@@ -34,6 +36,8 @@ class ConnectionHandler:
         self.crypt = EncryptionHandler()
         self.sid_Pool = Pool(0)
 
+        self.file_storage = "./files/"
+
         self.users = []         # Nutzer, die zum Index Session-ID gehoeren
         self.ivs = []           # Initialiserungsvektoren
         self.ctr = []           # Counter
@@ -41,61 +45,103 @@ class ConnectionHandler:
         self.uidstrings = []    # User-ID-Strings
         
         serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        file_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         if len(sys.argv) < 2:
             serv_soc.bind(("", 32323))
         else:
             serv_soc.bind(("", int(sys.argv[1])))
         serv_soc.listen(1)
+
+        if len(sys.argv) < 3:
+            file_soc.bind(("", 32324))
+        else:
+            file_soc.bind(("", int(sys.argv[2])))
+        file_soc.listen(1)
+
+        clients = []
+        file_sender = []
         
         try:
-            while True: 
-                komm, addr = serv_soc.accept() 
-                while True: 
-                    data = komm.recv(8192)
+            while True:
 
-                    if not data: 
-                        komm.close() 
-                        break
+                read, write, oob = select.select([serv_soc, file_soc], [], [])
+
+                for sock in read:
+
+                    # Verbindungsaufbauf fand auf der Server-Socket statt
+                    if sock is serv_soc:
+                        komm, addr = sock.accept()
+                        data = komm.recv(8192)
+
+                        # Leere Verbindung
+                        if not data: 
+                            komm.close()
+                            clients.remove(komm) 
+                            continue
                         
-                    if self.crypt.is_encrypted(data):
-                        body = self.decrypt(data)
+                        # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
+                        if self.crypt.is_encrypted(data):
+                            body = self.decrypt(data)
 
-                    # Kopfdaten und Nutzdaten trennen
-                    data = split(";", data, 1)
-                    self.header = self.parse_header(data[0])
-                    data = data[1]
-                    
-                    resp = "invalid request" # Default-Antwort
-
-                    if self.header[0] == "dhex":
-                        resp = self.init_dh(data)                      
-                    elif self.header[0] == "auth":
-                        resp = self.auth_user(body)
-                    elif self.header[0] == "mesg":
-                        resp = self.recv_msg(body)
-                    elif self.header[0] == "getmesg":
-                        resp = self.get_msg(body)
-                    elif self.header[0] == "file":
-                        resp = self.recv_file(body)
-                    elif self.header[0] == "brdc":
-                        resp = self.recv_brdc(body)
-                    elif self.header[0] == "getbrdc":
-                        resp = self.get_brdc(body)
-                    
-
-                    # Antwortpaket senden
-                    if self.header[0] == "dhex":
-                        komm.send(resp)
-                    else:
-                        komm.send(self.build_pack(resp))
+                        # Kopfdaten und Nutzdaten trennen
+                        data = split(";", data, 1)
+                        self.header = self.parse_header(data[0])
+                        data = data[1]
                         
-                    komm.close()
-                    break
-                    
+                        resp = "error - invalid-client-request" # Default-Antwort
+
+                        if self.header[0] == "dhex":
+                            resp = self.init_dh(data)                      
+                        elif self.header[0] == "auth":
+                            resp = self.auth_user(body)
+                        elif self.header[0] == "mesg":
+                            resp = self.recv_msg(body)
+                        elif self.header[0] == "getmesg":
+                            resp = self.get_msg(body)
+                        elif self.header[0] == "brdc":
+                            resp = self.recv_brdc(body)
+                        elif self.header[0] == "getbrdc":
+                            resp = self.get_brdc(body)
+                        elif self.header[0] == "regfile":
+                            resp = self.register_file(body)
+
+
+                        if "error" in resp:
+                            print resp
+                        
+
+                        # Antwortpaket senden
+                        if self.header[0] == "dhex":
+                            komm.send(resp)
+                        else:
+                            komm.send(self.build_pack(resp))
+                            
+                        komm.close()
+
+                    # Verbindung wurde ueber Dateisendungs-Socket aufgebaut
+                    elif sock is file_soc:
+                        komm, addr = sock.accept()
+
+                        filestring = self.generate_file_string()
+                        f = open(filestring, 'wb')
+
+                        data = sock.recv(8192)
+                        while data:
+                            f.write(data)
+                            data = sock.recv(8192)
+                        
+                        sock.write(filestring)
+                        sock.close()
+                        f.close()
+
+                        self.database.add_file(filestring)
+                        
         finally:
+            for client in clients: 
+                client.close() 
             serv_soc.close()
-
+            file_soc.close()
 
 
     def init_dh(self, data):
@@ -192,9 +238,12 @@ class ConnectionHandler:
         @param data: Paket des Clients ohne Kopfinformationen
         @type data: str
 
-        @return: str - Digest, der die Nutzer-ID-Strings enthaelt
+        @return: str - Digest, der den Nutzer-ID-String enthaelt
         """
         cred = split(":", data, 1)
+        if len(cred) < 2:
+            return "error - not-enough-arguments - AUTH"
+
         if self.database.auth_user(cred[0], cred[1]) == True:
 
             # User-ID String erzeugen
@@ -205,7 +254,7 @@ class ConnectionHandler:
 
             return dig
         else:
-            return "error - wrong-credentials"
+            return "error - wrong-credentials - AUTH"
 
 
 
@@ -321,7 +370,7 @@ class ConnectionHandler:
 
         # Nicht alle Felder gegeben
         if len(tmp) != 3:
-            return "Not long enough - BRDC"
+            return "error - not-enough-arguments - BRDC"
 
         if self.check_uidstring(sid, tmp[0]):
             rcv_gid = self.database.get_group_id(tmp[1])
@@ -334,10 +383,64 @@ class ConnectionHandler:
             return "error - wrong-uidstring - BRDC"
 
 
-        
-    def recv_file(self, data):
+
+    def register_file(self, data):
         """
-        Empfaengt eine Datei. - Noch nicht implementiert
+        Registriert eine Datei (Setzt den Besitzer zu einem Upload und gibt Dateinamen an)
+
+        @param data: Datenpaket des Clients ohne Kopfinformationen
+        @type data: str
+
+        @return: str - Erfolgs-/Fehlermeldung
         """
-        
-        return ""
+        values = split(data, ":", 2)
+        if len(values) < 2:
+            return "error - file"
+
+        filestring = values[0]
+        global_name = values[1]
+        del values
+
+        if not self.database.check_filestring(filestring):
+            return "error - wrong-filestring"
+
+        if not self.database.register_file(self.users[self.header[2]], global_name, filestring):
+            return "error - server-storage-error"
+        else:
+            return "soccess - FILE"
+
+
+
+    def create_file(path):
+        """
+        Erzeugt eine Datei.
+
+        @param path: Dateipfad
+        @type pyth: string
+        @retun: Boolean Erfolg
+        """
+
+        f = open(path, 'w')
+        f.write('')
+        f.close()
+
+        return True
+
+
+    def generate_file_string():
+        """
+        Generiert einen Datei-String fuer eine neu empfangene Datei
+        Prueft ausserdem, ob eine Datei mit diesem Namen in ./files vorhanden ist
+
+        @return: str - Dateistring
+        """
+        for i in range(0, 14):
+            string = ""
+            for i in range(0, 10):
+                string.append(choice(string.ascii_letters))
+
+            if os.path.exists(string):
+                break
+            else:
+                self.create_file(self.file_storage + string)
+
