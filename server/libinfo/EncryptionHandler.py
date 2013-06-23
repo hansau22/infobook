@@ -1,6 +1,9 @@
 from Crypto.Cipher import AES as AES
-from Crypto.Hash import SHA256 as SHA256
 from Crypto.Util import Counter as Counter
+from hashlib import sha256
+
+import  Crypto.Random as Random
+import binascii
 
 from re import split
 from random import randrange
@@ -18,9 +21,7 @@ class EncryptionHandler:
     """
 
     def __init__(self):
-        self.hashengine = SHA256.new()
-        """Initialisierung der Hashengine""" 
-
+        pass
 
 
     def is_encrypted(self, data):
@@ -96,10 +97,10 @@ class EncryptionHandler:
         """
         sesskey = public**secret % prime
 
+
         # Ergebnis Hashen
-        self.hashengine.update(str(sesskey))
-        sesskey = self.hashengine.digest()
-        self.hashengine.update("")
+        sesskey = sha256(str(sesskey)).digest()
+
         return sesskey
 
 
@@ -155,7 +156,4 @@ class EncryptionHandler:
 
         @return: str - Digest
         """
-        self.hashengine.update(string)
-        digest = self.hashengine.hexdigest()
-        self.hashengine.update("")
-        return digest
+        return sha256(string).hexdigest()
