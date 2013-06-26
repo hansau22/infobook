@@ -24,6 +24,7 @@ class DatabaseHandler:
         self.init_db()
         self.mid_Pool = Pool(0, self.get_start_mid())
         self.bid_Pool = Pool(0, self.get_start_brdc_mid())
+        self.fid_Pool = Pool(0, self.get_start_fid())
 
 
     
@@ -33,13 +34,34 @@ class DatabaseHandler:
 
         @return: None
         """
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS user(uid INTEGER, username TEXT, password TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS users(uid INTEGER, username TEXT, password TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS groups(gid Integer, member Integer, name Text)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS messages(mid INTEGER, uidsender INTEGER, uidreceiver INTEGER, content TEXT)")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS brdc_messages(bid INTEGER, uidsender INTEGER, gidreceiver INTEGER, content TEXT)")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS brdc_groups(gid Integer, member Integer, name Text)")
-
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS groupmessages(bid INTEGER, uidsender INTEGER, gidreceiver INTEGER, content TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS files(fid Integer, localname Text, globalname Text, owner Integer)")
         self.db.commit()
 
+        self.cursor.execute("SELECT uid FROM users WHERE uid = 0")
+        if self.cursor.fetchone() == None:
+            self.cursor.execute("INSERT INTO users VALUES(0, initial, nohash)")
+
+        self.cursor.execute("SELECT fid FROM files WHERE fid = 0")
+        if self.cursor.fetchone() == None:
+            self.cursor.execute("INSERT INTO files VALUES(0, initial, initial, 0)")
+
+        self.cursor.execute("SELECT mid FROM messages WHERE mid = 0")
+        if self.cursor.fetchone() == None:
+            self.cursor.execute("INSERT INTO messages VALUES(0, 0, 0, initial)")
+
+        self.cursor.execute("SELECT mid FROM groupmessages WHERE mid = 0")
+        if self.cursor.fetchone() == None:
+            self.cursor.execute("INSERT INTO groupmessages VALUES(0, 0, 0, initial)")
+
+        self.cursor.execute("SELECT gid FROM groups WHERE gid = 0")
+        if self.cursor.fetchone() == None:
+            self.cursor.execute("INSERT INTO groups VALUES(0, 0, initial)")
+
+        self.db.commit()
 
         
     def add_user(self, uid, username, pwhash):
@@ -57,7 +79,7 @@ class DatabaseHandler:
 
         @return: None
         """
-        self.cursor.execute("INSERT INTO user VALUES(?, ?, ?)", (uid, username, pwhash))
+        self.cursor.execute("INSERT INTO users VALUES(?, ?, ?)", (uid, username, pwhash))
         self.db.commit()
 
 
@@ -74,7 +96,7 @@ class DatabaseHandler:
 
         @return: None
         """ 
-        self.cursor.execute("SELECT * FROM user WHERE username=? AND password=?", (username, pwhash))
+        self.cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, pwhash))
         if self.cursor.fetchone() != None:
             return True
         return False
@@ -90,7 +112,7 @@ class DatabaseHandler:
 
         @return: str Nutzer-ID, False bei unbekanntem Nutzer
         """
-        self.cursor.execute("SELECT * FROM user WHERE username=?", [username])
+        self.cursor.execute("SELECT * FROM users WHERE username=?", [username])
         result = self.cursor.fetchone()
         if result == None:
             return False
@@ -106,7 +128,7 @@ class DatabaseHandler:
 
         @return: str Gruppen-ID, False bei unbekannter Gruppe
         """
-        self.cursor.execute("SELECT * FROM brdc_groups WHERE name=?", [name])
+        self.cursor.execute("SELECT * FROM groups WHERE name=?", [name])
         result = self.cursor.fetchone()
         if result == None:
             return False
@@ -138,7 +160,7 @@ class DatabaseHandler:
         @return: str Name - None falls Name nicht gefunden
         """
 
-        self.cursor.execute("SELECT name FROM brdc_groups WHERE gid = ?", str(id))
+        self.cursor.execute("SELECT name FROM groups WHERE gid = ?", str(id))
         return self.cursor.fetchone()
 
         
@@ -212,7 +234,7 @@ class DatabaseHandler:
         @return Array - [Sender(str), Gruppennachrichten(str)]
         """
 
-        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM brdc_messages WHERE mid > ?", str(last_gid))
+        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE mid > ?", str(last_gid))
 
         ret_value = []
         result = self.cursor.fetchone()
@@ -243,9 +265,65 @@ class DatabaseHandler:
             if not isinstance(gidReceiver, int): return False
             if not isinstance(data, str): return False
             
-            self.cursor.execute("INSERT INTO brdc_messages VALUES(?, ?, ?, ?)", (self.bid_Pool.give_next(), uidSender, gidReceiver, data))
+            self.cursor.execute("INSERT INTO groupmessages VALUES(?, ?, ?, ?)", (self.bid_Pool.give_next(), uidSender, gidReceiver, data))
             self.db.commit()
             return True
+
+
+
+    def add_file(self, local_name):
+        """
+        Erzeugt einen neuen Dateieintrag
+
+        @param local_name: Name der Datei auf dem Server
+        @type local_name: str
+
+        @return: Boolean Erfolg
+        """
+
+        self.cursor.execute("INSERT INTO files VALUES(?, ?, ?, ?)", (self.fid_Pool.give_next(), local_name, "", "0"))
+        self.db.commit()
+        return True
+
+
+
+    def register_file(self, owner, globalname, filestring):
+        """
+        Registriert eine Datei (Setzt Besitzer und Dateinamen)
+
+        @param owner: Nutzer-ID des Besitzers
+        @type owner: int
+
+        @param globalname: Dateiname der Datei
+        @type globalname: str
+
+        @param filestring: Dateistring der Datei
+        @type filestring: str
+
+        @return: Boolean Erfolg
+        """
+
+        self.cursor.execute("UPDATE files SET owner=?, globalname=? WHERE localname=?", (owner, globalname, filestring))
+        self.db.commit()
+        return True
+
+
+
+    def check_filestring(self, filestring):
+        """
+        Ueberprueft, ob ein Dateistring existiert
+
+        @param filestring: Dateistring
+        @type filestring: str
+
+        @return Boolean Erfolg
+        """
+
+        self.cursor.execute("SELECT localname FROM files WHERE localname = ?", filestring)
+        if self.cursor.fetchone() != None:
+            return True
+        return False
+
 
     
     def get_start_mid(self):
@@ -268,8 +346,22 @@ class DatabaseHandler:
 
         @return: int ID
         """
-        self.cursor.execute("SELECT mid FROM brdc_messages ORDER BY mid DESC")
+        self.cursor.execute("SELECT mid FROM groupmessages ORDER BY mid DESC")
         result = self.cursor.fetchone()
         if result == None:
             return 0
         return (result[0] + 1)
+
+
+
+    def get_start_fid(self):
+        """
+        Gibt die erste freie Datei-ID
+
+        @return: int ID
+        """
+        self.cursor.execute("SELECT fid FROM files ORDER BY fid DESC")
+        result = self.cursor.fetchone()
+        if result == None:
+            return 0
+        return (result[0] + 1)   
