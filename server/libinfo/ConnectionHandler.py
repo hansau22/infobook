@@ -117,6 +117,7 @@ class ConnectionHandler:
                         # Antwortpaket senden
                         if self.header[0] == "dhex":
                             print "dhex resp" + resp
+                            resp = self.encode_to_utf8(resp)
                             komm.send(resp)
                         else:
                             komm.send(self.build_pack(resp))
