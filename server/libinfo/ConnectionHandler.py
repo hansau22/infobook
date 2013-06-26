@@ -84,6 +84,9 @@ class ConnectionHandler:
                         if self.crypt.is_encrypted(data):
                             body = self.decrypt(data)
 
+                        # Datenpaket encoden
+                        self.encode_to_utf8(body)
+
                         # Kopfdaten und Nutzdaten trennen
                         data = split(";", data, 1)
                         self.header = self.parse_header(data[0])
@@ -95,24 +98,25 @@ class ConnectionHandler:
                             resp = self.init_dh(data)                      
                         elif self.header[0] == "auth":
                             resp = self.auth_user(body)
-                        elif self.header[0] == "mesg":
+                        elif self.header[0] == "msg":
                             resp = self.recv_msg(body)
-                        elif self.header[0] == "getmesg":
+                        elif self.header[0] == "getmsg":
                             resp = self.get_msg(body)
-                        elif self.header[0] == "brdc":
-                            resp = self.recv_brdc(body)
-                        elif self.header[0] == "getbrdc":
-                            resp = self.get_brdc(body)
+                        elif self.header[0] == "gmsg":
+                            resp = self.recv_gmsg(body)
+                        elif self.header[0] == "getgmsg":
+                            resp = self.get_gmsg(body)
                         elif self.header[0] == "regfile":
                             resp = self.register_file(body)
 
 
                         if "error" in resp:
-                            print resp
+                            print "error:  " + resp
                         
 
                         # Antwortpaket senden
                         if self.header[0] == "dhex":
+                            print "dhex resp" + resp
                             komm.send(resp)
                         else:
                             komm.send(self.build_pack(resp))
@@ -164,6 +168,8 @@ class ConnectionHandler:
         self.ctr.append(ret[1])
         self.sesskey.append(ret[2])
 
+        print "sesskey :  " + ret[2]
+
         return ret[3]
 
 
@@ -181,9 +187,23 @@ class ConnectionHandler:
         tmp = split(";", data, 1)       # ";" Seperiert Nutz- und Kopfdaten
         sid = split(":", tmp[0], 2)     # Extrahiere Session-ID
         sid = int(sid[2])
+        print sid
         data = self.crypt.decrypt(self.sesskey[sid], self.ctr[sid], tmp[1])
         return data
 
+
+
+    def encode_to_utf8(self, data):
+        """
+        Dekodiert einen String in UTF-8
+
+        @param data: String
+        @type data: str
+
+        @return: str - UTF-8 dekodierter String
+        """
+
+        return data.decode("utf-8")
 
             
     def encrypt(self, data):
@@ -242,6 +262,7 @@ class ConnectionHandler:
         """
         cred = split(":", data, 1)
         if len(cred) < 2:
+            print "cred :  " + cred[0]
             return "error - not-enough-arguments - AUTH"
 
         if self.database.auth_user(cred[0], cred[1]) == True:
@@ -330,7 +351,7 @@ class ConnectionHandler:
 
 
 
-    def get_brdc(self, data):
+    def get_gmsg(self, data):
         """
         Gibt dem Client die Gruppennachrichten zurueck.
 
@@ -356,7 +377,7 @@ class ConnectionHandler:
 
 
 
-    def recv_brdc(self, data):
+    def recv_gmsg(self, data):
         """
         Traegt eine Broadcast-Nachricht in die Datenbank ein.
 
