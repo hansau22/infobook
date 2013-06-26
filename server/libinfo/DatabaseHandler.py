@@ -182,7 +182,7 @@ class DatabaseHandler:
         if not isinstance(uidSender, int): return False
         if not isinstance(data, str): return False
         
-        # Wiederholen, wenn uidReceiver eine liste ist
+        # Wiederholen, wenn uidReceiver eine Liste ist
         if not isinstance(uidReceiver, list):
             self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, uidReceiver, data))
         else:
