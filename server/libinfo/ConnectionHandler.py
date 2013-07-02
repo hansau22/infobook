@@ -37,6 +37,7 @@ class ConnectionHandler:
         self.sid_Pool = Pool(0)
 
         self.file_storage = "./files/"
+        self.max_rcv = 4096
 
         self.users = []         # Nutzer, die zum Index Session-ID gehoeren
         self.ivs = []           # Initialiserungsvektoren
@@ -44,19 +45,20 @@ class ConnectionHandler:
         self.sesskey = []       # Sessionkeys
         self.uidstrings = []    # User-ID-Strings
         
-        serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        file_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #serv_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #file_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        serv_soc = socket.socket()
+        file_soc = socket.socket()
 
         if len(sys.argv) < 2:
             serv_soc.bind(("", 32323))
-        else:
-            serv_soc.bind(("", int(sys.argv[1])))
-        serv_soc.listen(1)
-
-        if len(sys.argv) < 3:
             file_soc.bind(("", 32324))
         else:
-            file_soc.bind(("", int(sys.argv[2])))
+            serv_soc.bind(("", int(sys.argv[1])))
+            file_soc.bind(("", int(sys.argv[1]) + 1))
+
+        serv_soc.listen(1)
         file_soc.listen(1)
 
         clients = []
@@ -72,25 +74,26 @@ class ConnectionHandler:
                     # Verbindungsaufbauf fand auf der Server-Socket statt
                     if sock is serv_soc:
                         komm, addr = sock.accept()
-                        data = komm.recv(8192)
+                        data = ""
+                        data = komm.recv(self.max_rcv)
 
                         # Leere Verbindung
                         if not data: 
                             komm.close()
-                            clients.remove(komm) 
                             continue
-                        
+
                         # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
                         if self.crypt.is_encrypted(data):
                             body = self.decrypt(data)
-
-                        # Datenpaket encoden
-                        self.encode_to_utf8(body)
 
                         # Kopfdaten und Nutzdaten trennen
                         data = split(";", data, 1)
                         self.header = self.parse_header(data[0])
                         data = data[1]
+
+                        # Datenpaket encoden
+                        if self.header[0] != "dhex":
+                            self.encode_to_utf8(body)
                         
                         resp = "error - invalid-client-request" # Default-Antwort
 
@@ -116,7 +119,7 @@ class ConnectionHandler:
 
                         # Antwortpaket senden
                         if self.header[0] == "dhex":
-                            print "dhex resp" + resp
+                            #print "dhex resp" + resp
                             resp = self.encode_to_utf8(resp)
                             komm.send(resp)
                         else:
@@ -129,15 +132,17 @@ class ConnectionHandler:
                         komm, addr = sock.accept()
 
                         filestring = self.generate_file_string()
-                        f = open(filestring, 'wb')
+                        targ_file = self.file_storage + filestring
+                        f = open(targ_file, 'wb')
 
-                        data = sock.recv(8192)
-                        while data:
+                        data = komm.recv(self.max_rcv)
+                        while data and data != "[FIN]":
                             f.write(data)
-                            data = sock.recv(8192)
+                            data = komm.recv(self.max_rcv)
                         
-                        sock.write(filestring)
-                        sock.close()
+                        komm.send(filestring)
+                        print filestring
+                        komm.close()
                         f.close()
 
                         self.database.add_file(filestring)
@@ -169,7 +174,7 @@ class ConnectionHandler:
         self.ctr.append(ret[1])
         self.sesskey.append(ret[2])
 
-        print "sesskey :  " + ret[2]
+        #print "sesskey :  " + ret[2]
 
         return ret[3]
 
@@ -188,7 +193,6 @@ class ConnectionHandler:
         tmp = split(";", data, 1)       # ";" Seperiert Nutz- und Kopfdaten
         sid = split(":", tmp[0], 2)     # Extrahiere Session-ID
         sid = int(sid[2])
-        print sid
         data = self.crypt.decrypt(self.sesskey[sid], self.ctr[sid], tmp[1])
         return data
 
@@ -263,7 +267,6 @@ class ConnectionHandler:
         """
         cred = split(":", data, 1)
         if len(cred) < 2:
-            print "cred :  " + cred[0]
             return "error - not-enough-arguments - AUTH"
 
         if self.database.auth_user(cred[0], cred[1]) == True:
@@ -433,7 +436,7 @@ class ConnectionHandler:
 
 
 
-    def create_file(path):
+    def create_file(self, path):
         """
         Erzeugt eine Datei.
 
@@ -449,7 +452,7 @@ class ConnectionHandler:
         return True
 
 
-    def generate_file_string():
+    def generate_file_string(self):
         """
         Generiert einen Datei-String fuer eine neu empfangene Datei
         Prueft ausserdem, ob eine Datei mit diesem Namen in ./files vorhanden ist
@@ -457,12 +460,16 @@ class ConnectionHandler:
         @return: str - Dateistring
         """
         for i in range(0, 14):
-            string = ""
+            filestring = ""
             for i in range(0, 10):
-                string.append(choice(string.ascii_letters))
+                filestring = filestring + choice(string.ascii_letters)
 
-            if os.path.exists(string):
+            if os.path.exists(filestring):
                 break
             else:
-                self.create_file(self.file_storage + string)
+                storage_string = self.file_storage + filestring
+                self.create_file(storage_string)
+                return filestring
+
+        return None
 

@@ -43,23 +43,23 @@ class DatabaseHandler:
 
         self.cursor.execute("SELECT uid FROM users WHERE uid = 0")
         if self.cursor.fetchone() == None:
-            self.cursor.execute("INSERT INTO users VALUES(0, initial, nohash)")
+            self.cursor.execute("INSERT INTO users VALUES(0, 'initial', 'nohash')")
 
         self.cursor.execute("SELECT fid FROM files WHERE fid = 0")
         if self.cursor.fetchone() == None:
-            self.cursor.execute("INSERT INTO files VALUES(0, initial, initial, 0)")
+            self.cursor.execute("INSERT INTO files VALUES(0, 'initial', 'initial', 0)")
 
         self.cursor.execute("SELECT mid FROM messages WHERE mid = 0")
         if self.cursor.fetchone() == None:
-            self.cursor.execute("INSERT INTO messages VALUES(0, 0, 0, initial)")
+            self.cursor.execute("INSERT INTO messages VALUES(0, 0, 0, 'initial')")
 
-        self.cursor.execute("SELECT mid FROM groupmessages WHERE mid = 0")
+        self.cursor.execute("SELECT bid FROM groupmessages WHERE bid = 0")
         if self.cursor.fetchone() == None:
-            self.cursor.execute("INSERT INTO groupmessages VALUES(0, 0, 0, initial)")
+            self.cursor.execute("INSERT INTO groupmessages VALUES(0, 0, 0, 'initial')")
 
         self.cursor.execute("SELECT gid FROM groups WHERE gid = 0")
         if self.cursor.fetchone() == None:
-            self.cursor.execute("INSERT INTO groups VALUES(0, 0, initial)")
+            self.cursor.execute("INSERT INTO groups VALUES(0, 0, 'initial')")
 
         self.db.commit()
 
@@ -346,7 +346,7 @@ class DatabaseHandler:
 
         @return: int ID
         """
-        self.cursor.execute("SELECT mid FROM groupmessages ORDER BY mid DESC")
+        self.cursor.execute("SELECT bid FROM groupmessages ORDER BY bid DESC")
         result = self.cursor.fetchone()
         if result == None:
             return 0
