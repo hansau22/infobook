@@ -179,8 +179,8 @@ class DatabaseHandler:
 
         @return: Boolean Erfolg
         """
-        if not isinstance(uidSender, int): return False
-        if not isinstance(data, str): return False
+        #if not isinstance(uidSender, int): return False
+        #if not isinstance(data, str): return False
         
         # Wiederholen, wenn uidReceiver eine Liste ist
         if not isinstance(uidReceiver, list):
