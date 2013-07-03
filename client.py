@@ -104,8 +104,10 @@ sesskey = int(data[1])**num % prime
 iv = data[2]
 iv = binascii.unhexlify(iv)
 ctr = Counter.new(128, initial_value=long(iv.encode("hex"), 16))
-ec = EncryptionHandler()
-sesskey = ec.get_hash(str(sesskey))
+
+hashengine.update(str(sesskey))
+sesskey = hashengine.digest()
+
 #plain = "gu"
 #iv = 'asdfasdfasdfasdf'
 

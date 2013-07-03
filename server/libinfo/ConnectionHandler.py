@@ -92,9 +92,8 @@ class ConnectionHandler:
                         data = data[1]
 
                         # Datenpaket encoden
-                        #if self.header[0] != "dhex":
-                        #    print body
-                        #    self.encode_to_unicode(body)
+                        if self.header[0] != "dhex":
+                            self.encode_to_unicode(body)
                         
                         # Default-Antwort
                         resp = "error - invalid-client-request" 
@@ -210,8 +209,7 @@ class ConnectionHandler:
         @return: str - UTF-8 dekodierter String
         """
 
-        #return data.decode("iso-8859-1")
-        return unicode('data')
+        return data.decode("iso-8859-1")
 
             
     def encrypt(self, data):
