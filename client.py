@@ -70,7 +70,7 @@ message_input_raw = raw_input("Ihre Nachricht:")
 stdout_encoding = sys.stdout.encoding or sys.getfilesystemencoding()
 
 #message_input_raw = unicode(message_input_raw_unicode)
-message_input = message_input_raw.decode("iso-8859-1").encode(stdout_encoding)
+message_input = message_input_raw.decode("iso-8859-1").encode("utf-8")
 a = proot**num % prime
 
 # Paket mit A an server senden

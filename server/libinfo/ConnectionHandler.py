@@ -93,7 +93,7 @@ class ConnectionHandler:
 
                         # Datenpaket encoden
                         if self.header[0] != "dhex":
-                            self.encode_to_utf8(body)
+                            self.encode_string(body)
                         
                         # Default-Antwort
                         resp = "error - invalid-client-request" 
@@ -121,9 +121,9 @@ class ConnectionHandler:
                         # Antwortpaket senden
                         if self.header[0] == "dhex":
                             #print "dhex resp" + resp
-                            resp = self.encode_to_unicode(resp)
                             komm.send(resp)
                         else:
+                            resp = self.encode_string(resp)
                             komm.send(self.build_pack(resp))
                             
                         komm.close()
@@ -199,7 +199,7 @@ class ConnectionHandler:
 
 
 
-    def encode_to_unicode(self, data):
+    def encode_string(self, data):
         """
         Dekodiert einen String in UTF-8
 
@@ -208,8 +208,7 @@ class ConnectionHandler:
 
         @return: str - UTF-8 dekodierter String
         """
-
-        return data.decode("iso-8859-1")
+        return data.decode("utf-8")
 
             
     def encrypt(self, data):
