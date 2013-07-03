@@ -93,7 +93,7 @@ class ConnectionHandler:
 
                         # Datenpaket encoden
                         if self.header[0] != "dhex":
-                            self.encode_to_utf8(body)
+                            self.encode_to_unicode(body)
                         
                         # Default-Antwort
                         resp = "error - invalid-client-request" 
