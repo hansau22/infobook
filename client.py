@@ -179,11 +179,11 @@ print "Antwort auf Auth:" + msg
 uidstring = msg
 
 # Neue Gruppennachricht schicken
-rcv_group = "asdf"
+rcv_group = "meop"
 
 plain = uidstring + ":" + rcv_group + ":" + message_input
 msga = ""
-msga += "mesg" + ":"
+msga += "msg" + ":"
 msga += "12.12.12" + ":"
 msga += str(sid) + ";"
 msga += cipher.encrypt(plain)

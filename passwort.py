@@ -37,7 +37,7 @@ save_info_password = open("login_data_password", 'w')
 save_info_password.write(hash_password_output)
 message_input = raw_input("Ihre Nachricht:")
 
-plain = "test:8b2d38b789e90bb18567c2be4abbd4295f461f6453dd0447a3bf248a75eb0ae7"
+plain = "meop:8b2d38b789e90bb18567c2be4abbd4295f461f6453dd0447a3bf248a75eb0ae7"
 #plain = user+":"+hash_password_output
 print(plain)
 
