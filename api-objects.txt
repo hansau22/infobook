@@ -5,6 +5,7 @@ infolib.ConnectionHandler.build_pack	infolib.ConnectionHandler-class.html#build_
 infolib.ConnectionHandler.encrypt	infolib.ConnectionHandler-class.html#encrypt
 infolib.ConnectionHandler.recv_file	infolib.ConnectionHandler-class.html#recv_file
 infolib.ConnectionHandler.decrypt	infolib.ConnectionHandler-class.html#decrypt
+infolib.ConnectionHandler.get_msg	infolib.ConnectionHandler-class.html#get_msg
 infolib.ConnectionHandler.recv_msg	infolib.ConnectionHandler-class.html#recv_msg
 infolib.ConnectionHandler.check_uidstring	infolib.ConnectionHandler-class.html#check_uidstring
 infolib.ConnectionHandler.init_dh	infolib.ConnectionHandler-class.html#init_dh
@@ -13,6 +14,7 @@ infolib.ConnectionHandler.recv_brdc	infolib.ConnectionHandler-class.html#recv_br
 infolib.ConnectionHandler.parse_header	infolib.ConnectionHandler-class.html#parse_header
 infolib.ConnectionHandler.__init__	infolib.ConnectionHandler-class.html#__init__
 infolib.DatabaseHandler	infolib.DatabaseHandler-class.html
+infolib.DatabaseHandler.get_messages_by_last_mid	infolib.DatabaseHandler-class.html#get_messages_by_last_mid
 infolib.DatabaseHandler.get_start_mid	infolib.DatabaseHandler-class.html#get_start_mid
 infolib.DatabaseHandler.rcv_brdc_message	infolib.DatabaseHandler-class.html#rcv_brdc_message
 infolib.DatabaseHandler.rcv_message	infolib.DatabaseHandler-class.html#rcv_message
