@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 
 import socket
 import re
@@ -70,7 +70,7 @@ message_input_raw = raw_input("Ihre Nachricht:")
 stdout_encoding = sys.stdout.encoding or sys.getfilesystemencoding()
 
 #message_input_raw = unicode(message_input_raw_unicode)
-message_input = message_input_raw.decode("iso-8859-1").encode("utf-8")
+message_input = message_input_raw.decode("utf-8")
 a = proot**num % prime
 
 # Paket mit A an server senden
@@ -140,7 +140,8 @@ cipher = AES.new(sesskey, AES.MODE_CTR, counter=ctr)
 #else:
 
 
-#plain = "test:8b2d38b789e90bb18567c2be4abbd4295f461f6453dd0447a3bf248a75eb0ae7"
+plain = "test:8b2d38b789e90bb18567c2be4abbd4295f461f6453dd0447a3bf248a75eb0ae7"
+plain = plain.encode("utf-8")
 msg = ""
 msg += "auth" + ":"
 msg += "12.12.12" + ":"
@@ -172,6 +173,7 @@ else:
 cipher = AES.new(sesskey, AES.MODE_CTR, counter=ctr)
 tmp = re.split(";", data, 1)
 msg = cipher.decrypt(tmp[1])
+msg = msg.decode("utf-8")
 
 print "Antwort auf Auth:" + msg
 
@@ -179,9 +181,11 @@ print "Antwort auf Auth:" + msg
 uidstring = msg
 
 # Neue Gruppennachricht schicken
-rcv_group = "meop"
+rcv_group = "test"
 
 plain = uidstring + ":" + rcv_group + ":" + message_input
+plain = plain.encode('utf-8', 'ignore')
+print plain
 msga = ""
 msga += "msg" + ":"
 msga += "12.12.12" + ":"

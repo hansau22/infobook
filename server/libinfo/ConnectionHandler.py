@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from  libinfo.EncryptionHandler import EncryptionHandler
 from  libinfo.DatabaseHandler import DatabaseHandler
 #from  libinfo import DatabaseHandler
@@ -7,6 +9,7 @@ import socket
 import select
 import sys
 import os
+import binascii
 import string
 
 from re import split
@@ -85,6 +88,8 @@ class ConnectionHandler:
                         # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
                         if self.crypt.is_encrypted(data):
                             body = self.decrypt(data)
+                            body = self.decode_string(body)
+                            #body = body.strip().decode("hex")
 
                         # Kopfdaten und Nutzdaten trennen
                         data = split(";", data, 1)
@@ -92,8 +97,8 @@ class ConnectionHandler:
                         data = data[1]
 
                         # Datenpaket encoden
-                        if self.header[0] != "dhex":
-                            self.encode_string(body)
+                        #if self.header[0] != "dhex":
+                            
                         
                         # Default-Antwort
                         resp = "error - invalid-client-request" 
@@ -199,7 +204,7 @@ class ConnectionHandler:
 
 
 
-    def encode_string(self, data):
+    def decode_string(self, data):
         """
         Dekodiert einen String in UTF-8
 
@@ -209,6 +214,19 @@ class ConnectionHandler:
         @return: str - UTF-8 dekodierter String
         """
         return data.decode("utf-8")
+
+
+    def encode_string(self, data):
+        """
+        Encodiert einen String in UTF-8
+
+        @param data: String
+        @type data: str
+
+        @return: str - UTF-8 encodierter String
+        """
+        print data
+        return data.encode("utf-8")
 
             
     def encrypt(self, data):
@@ -272,7 +290,7 @@ class ConnectionHandler:
         if self.database.auth_user(cred[0], cred[1]) == True:
 
             # User-ID String erzeugen
-            dig = self.crypt.get_hash(self.sesskey[self.header[2]] + cred[0])
+            dig = self.crypt.get_hash(self.sesskey[self.header[2]] + str(cred[0])) 
 
             self.uidstrings[self.header[2]] = dig
             self.users[self.header[2]] = self.database.get_user_id(cred[0])
@@ -395,17 +413,17 @@ class ConnectionHandler:
 
         # Nicht alle Felder gegeben
         if len(tmp) != 3:
-            return "error - not-enough-arguments - BRDC"
+            return "error - not-enough-arguments - GroupMessage"
 
         if self.check_uidstring(sid, tmp[0]):
             rcv_gid = self.database.get_group_id(tmp[1])
             snd_uid = self.users[self.header[2]]
             print "writing message:" + tmp[2]
             if not self.database.rcv_brdc_message(snd_uid, rcv_gid, tmp[2]):
-                return "error - server-application-error - BRDC"
-            return "success - BRDC"
+                return "error - server-application-error - GroupMessage"
+            return "success - GroupMessage"
         else:
-            return "error - wrong-uidstring - BRDC"
+            return "error - wrong-uidstring - GroupMessage"
 
 
 

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from libinfo.Pool import Pool
 
 import sqlite3
@@ -20,6 +22,7 @@ class DatabaseHandler:
         @return: None
         """
         self.db = sqlite3.connect(database)
+        self.db.text_factory = str
         self.cursor = self.db.cursor()
         self.init_db()
         self.mid_Pool = Pool(0, self.get_start_mid())
@@ -183,12 +186,15 @@ class DatabaseHandler:
         #if not isinstance(data, str): return False
         
         # Wiederholen, wenn uidReceiver eine Liste ist
-        data = unicode(data)
+        #data = data.decode('utf-8').encode("utf-8")
+
+        data = data.strip()
+
         if not isinstance(uidReceiver, list):
-            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, uidReceiver, data))
+            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (str(self.mid_Pool.give_next()), str(uidSender), str(uidReceiver), data.encode("utf-8", "ignore")))
         else:
             for item in uidReceiver:
-                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, item, data))
+                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (str(self.mid_Pool.give_next()), str(uidSender), str(item), data))
         
         self.db.commit()
         return True
@@ -262,11 +268,10 @@ class DatabaseHandler:
 
             @return: Boolean Erfolg
             """
-            if not isinstance(uidSender, int): return False
-            if not isinstance(gidReceiver, int): return False
-            if not isinstance(data, str): return False
+
+            # data = data.encode("utf-8")
             
-            self.cursor.execute("INSERT INTO groupmessages VALUES(?, ?, ?, ?)", (self.bid_Pool.give_next(), uidSender, gidReceiver, data))
+            self.cursor.execute("INSERT INTO groupmessages VALUES(?, ?, ?, ?)", (str(self.bid_Pool.give_next()), str(uidSender), str(gidReceiver), unicode(data)))
             self.db.commit()
             return True
 
@@ -282,7 +287,7 @@ class DatabaseHandler:
         @return: Boolean Erfolg
         """
 
-        self.cursor.execute("INSERT INTO files VALUES(?, ?, ?, ?)", (self.fid_Pool.give_next(), local_name, "", "0"))
+        self.cursor.execute("INSERT INTO files VALUES(?, ?, ?, ?)", (str(self.fid_Pool.give_next()), local_name, "", "0"))
         self.db.commit()
         return True
 
