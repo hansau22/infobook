@@ -227,32 +227,6 @@ class DatabaseHandler:
 
 
 
-    def get_messages_by_last_gid(self, uidReceiver, last_gid):
-        """
-        Sendet dem Client die neuen Gruppennachrichten.
-        Alle Gruppennachrichten sind neu, wenn sie eine groessere GID als die uebergebene hat.
-
-        @param uidReceiver: Empfaenger der Gruppennachrichten
-        @type uidReceiver: str
-
-        @param last_gid: Letzte bekannte GID
-        @type last_gid: int
-
-        @return Array - [Sender(str), Gruppennachrichten(str)]
-        """
-
-        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE mid > ?", str(last_gid))
-
-        ret_value = []
-        result = self.cursor.fetchone()
-        while result != None:
-            ret_value.append(result)
-            result = self.cursor.fetchone()
-
-        return ret_value
-
-
-
     def rcv_brdc_message(self, uidSender, gidReceiver, data):
             """
             Traegt eine Broadcast-Nachricht in die Datenbank ein
@@ -371,3 +345,29 @@ class DatabaseHandler:
         if result == None:
             return 0
         return (result[0] + 1)   
+
+
+
+    def get_messages_by_last_group_id(self, uidReceiver, last_gid):
+        """
+        Sendet dem Client die neuen Gruppennachrichten.
+        Alle Gruppennachrichten sind neu, wenn sie eine groessere GID als die uebergebene hat.
+
+        @param uidReceiver: Empfaenger der Gruppennachrichten
+        @type uidReceiver: str
+
+        @param last_gid: Letzte bekannte GID
+        @type last_gid: int
+
+        @return Array - [Sender(str), Gruppennachrichten(str)]
+        """
+
+        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE mid > ?", str(last_gid))
+
+        ret_value = []
+        result = self.cursor.fetchone()
+        while result != None:
+            ret_value.append(result)
+            result = self.cursor.fetchone()
+
+        return ret_value
