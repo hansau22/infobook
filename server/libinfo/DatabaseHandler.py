@@ -362,9 +362,10 @@ class DatabaseHandler:
         @return Array - [Sender(str), Gruppennachrichten(str)]
         """
 
-        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE mid > ?", str(last_gid))
+        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE bid > ?", str(last_gid))
 
         ret_value = []
+        ret_value.append(("gu", "gu", "gu"))
         result = self.cursor.fetchone()
         while result != None:
             ret_value.append(result)
