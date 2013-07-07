@@ -31,6 +31,10 @@ class EncryptionHandler:
         @type data: str
         @return: Boolean Erfolg
         """
+
+        if not isinstance(data, str):
+            data = str(data)
+
         tmp = split(":", data, 2)
         # Nur DHEX-Pakete sind unverschluesselt
         if tmp[0] == "dhex":
@@ -49,9 +53,13 @@ class EncryptionHandler:
         @param data: Enthaelt A des Partners
         @type data: str
 
-        @return: Array - [Initialisrungsverktor(str), Counter(counter), Sessionkey(str), Antwortpaket(str)]
+        @return: Array - [Initialisrungsverktor(str), Counter(counter), Sessionkey(str), Antwortpaket(str)], False bei falschem Parameter-Typ
 
         """
+
+        if not isinstance(data, str):
+            return False
+
         #prime = 2959259
         prime = 13
         proot = 3
@@ -93,8 +101,16 @@ class EncryptionHandler:
         @param prime: Primzahl
         @type prime: int
 
-        @return: int - Sessionkey
+        @return: int - Sessionkey, False bei falschen Parameter-Typen
         """
+
+        if not isinstance(secret, int):
+            return False
+        if not isinstance(public, int):
+            return False
+        if not isinstance(prime, int):
+            return False
+
         sesskey = public**secret % prime
 
 
@@ -120,6 +136,7 @@ class EncryptionHandler:
 
         @return: str - Entschluesselter Daten-String
         """
+
         cipher = AES.new(sesskey, AES.MODE_CTR, counter=counter)
         dec = cipher.decrypt(data)
         return dec
