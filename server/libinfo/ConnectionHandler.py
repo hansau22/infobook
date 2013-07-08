@@ -52,106 +52,75 @@ class ConnectionHandler:
         #file_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         serv_soc = socket.socket()
-        file_soc = socket.socket()
 
         if len(sys.argv) < 2:
             serv_soc.bind(("", 32323))
-            file_soc.bind(("", 32324))
         else:
             serv_soc.bind(("", int(sys.argv[1])))
-            file_soc.bind(("", int(sys.argv[1]) + 1))
 
         serv_soc.listen(1)
-        file_soc.listen(1)
-
-        clients = []
-        file_sender = []
         
         try:
             while True:
 
-                read, write, oob = select.select([serv_soc, file_soc], [], [])
+                komm, addr = sock.accept()
+                data = ""
+                data = komm.recv(self.max_rcv)
 
-                for sock in read:
+                # Leere Verbindung
+                if not data: 
+                    komm.close()
+                    continue
 
-                    # Verbindungsaufbauf fand auf der Server-Socket statt
-                    if sock is serv_soc:
-                        komm, addr = sock.accept()
-                        data = ""
-                        data = komm.recv(self.max_rcv)
+                # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
+                if self.crypt.is_encrypted(data):
+                    body = self.decrypt(data)
+                    body = self.decode_string(body)
+                    #body = body.strip().decode("hex")
 
-                        # Leere Verbindung
-                        if not data: 
-                            komm.close()
-                            continue
+                # Kopfdaten und Nutzdaten trennen
+                data = split(";", data, 1)
+                self.header = self.parse_header(data[0])
+                data = data[1]
 
-                        # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
-                        if self.crypt.is_encrypted(data):
-                            body = self.decrypt(data)
-                            body = self.decode_string(body)
-                            #body = body.strip().decode("hex")
+                # Datenpaket encoden
+                #if self.header[0] != "dhex":
+                    
+                
+                # Default-Antwort
+                resp = "error - invalid-client-request" 
 
-                        # Kopfdaten und Nutzdaten trennen
-                        data = split(";", data, 1)
-                        self.header = self.parse_header(data[0])
-                        data = data[1]
-
-                        # Datenpaket encoden
-                        #if self.header[0] != "dhex":
-                            
-                        
-                        # Default-Antwort
-                        resp = "error - invalid-client-request" 
-
-                        if self.header[0] == "dhex":
-                            resp = self.init_dh(data)                      
-                        elif self.header[0] == "auth":
-                            resp = self.auth_user(body)
-                        elif self.header[0] == "msg":
-                            resp = self.recv_msg(body)
-                        elif self.header[0] == "getmsg":
-                            resp = self.get_msg(body)
-                        elif self.header[0] == "gmsg":
-                            resp = self.recv_gmsg(body)
-                        elif self.header[0] == "getgmsg":
-                            resp = self.get_gmsg(body)
-                        elif self.header[0] == "regfile":
-                            resp = self.register_file(body)
+                if self.header[0] == "dhex":
+                    resp = self.init_dh(data)                      
+                elif self.header[0] == "auth":
+                    resp = self.auth_user(body)
+                elif self.header[0] == "msg":
+                    resp = self.recv_msg(body)
+                elif self.header[0] == "getmsg":
+                    resp = self.get_msg(body)
+                elif self.header[0] == "gmsg":
+                    resp = self.recv_gmsg(body)
+                elif self.header[0] == "getgmsg":
+                    resp = self.get_gmsg(body)
+                elif self.header[0] == "reqfile":
+                    resp = self.request_file()
+                elif self.header[0] == "regfile":
+                    resp = self.register_file(body)
 
 
-                        if "error" in resp:
-                            print "error:  " + resp
-                        
+                if "error" in resp:
+                    print "error:  " + resp
+                
 
-                        # Antwortpaket senden
-                        if self.header[0] == "dhex":
-                            #print "dhex resp" + resp
-                            komm.send(resp)
-                        else:
-                            resp = self.encode_string(resp)
-                            komm.send(self.build_pack(resp))
-                            
-                        komm.close()
-
-                    # Verbindung wurde ueber Dateisendungs-Socket aufgebaut
-                    elif sock is file_soc:
-                        komm, addr = sock.accept()
-
-                        filestring = self.generate_file_string()
-                        targ_file = self.file_storage + filestring
-                        f = open(targ_file, 'wb')
-
-                        data = komm.recv(self.max_rcv)
-                        while data and data != "[FIN]":
-                            f.write(data)
-                            data = komm.recv(self.max_rcv)
-                        
-                        komm.send(filestring)
-                        print filestring
-                        komm.close()
-                        f.close()
-
-                        self.database.add_file(filestring)
+                # Antwortpaket senden
+                if self.header[0] == "dhex":
+                    #print "dhex resp" + resp
+                    komm.send(resp)
+                else:
+                    resp = self.encode_string(resp)
+                    komm.send(self.build_pack(resp))
+                    
+                komm.close()
                         
         finally:
             for client in clients: 
@@ -426,6 +395,21 @@ class ConnectionHandler:
             return "error - wrong-uidstring - GroupMessage"
 
 
+    def request_file(self, data):
+        """
+        Gibt einen Dateistring fuer eine neue Datei zurueck, die ueber FTP hochgeladen werden kann
+
+        @return: str - Dateistring
+        """
+
+        ret_value = self.generate_file_string()
+
+        if ret_value == None:
+            return "error - storage-full - REQFILE"
+        else:
+            return ret_value
+
+
 
     def register_file(self, data):
         """
@@ -454,22 +438,6 @@ class ConnectionHandler:
 
 
 
-    def create_file(self, path):
-        """
-        Erzeugt eine Datei.
-
-        @param path: Dateipfad
-        @type pyth: string
-        @retun: Boolean Erfolg
-        """
-
-        f = open(path, 'w')
-        f.write('')
-        f.close()
-
-        return True
-
-
     def generate_file_string(self):
         """
         Generiert einen Datei-String fuer eine neu empfangene Datei
@@ -485,8 +453,6 @@ class ConnectionHandler:
             if os.path.exists(filestring):
                 break
             else:
-                storage_string = self.file_storage + filestring
-                self.create_file(storage_string)
                 return filestring
 
         return None
