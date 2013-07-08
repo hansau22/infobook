@@ -395,7 +395,7 @@ class ConnectionHandler:
             return "error - wrong-uidstring - GroupMessage"
 
 
-    def request_file(self, data):
+    def request_file(self):
         """
         Gibt einen Dateistring fuer eine neue Datei zurueck, die ueber FTP hochgeladen werden kann
 
@@ -407,6 +407,7 @@ class ConnectionHandler:
         if ret_value == None:
             return "error - storage-full - REQFILE"
         else:
+            self.database.add_file(ret_value)
             return ret_value
 
 
@@ -450,7 +451,7 @@ class ConnectionHandler:
             for i in range(0, 10):
                 filestring = filestring + choice(string.ascii_letters)
 
-            if os.path.exists(filestring):
+            if os.path.exists(self.storage_string + filestring):
                 break
             else:
                 return filestring
