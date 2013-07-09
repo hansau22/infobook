@@ -4,3 +4,4 @@ build
 infobook.sublime*
 test*
 files
+libinfo/libinfo.backup
