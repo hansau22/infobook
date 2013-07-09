@@ -288,7 +288,6 @@ class DatabaseHandler:
         self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE bid > %d", last_gid)
 
         ret_value = []
-        ret_value.append(("gu", "gu", "gu"))
         result = self.cursor.fetchone()
         while result != None:
             ret_value.append(result)
@@ -433,6 +432,8 @@ class DatabaseHandler:
         """
         self.cursor.execute("SELECT fid FROM files ORDER BY fid DESC")
         result = self.cursor.fetchone()
+        result = str(result)
         if result == None:
             return 0
-        return (result[0] + 1)   
+        result = int(result[0])
+        return (result + 1)   

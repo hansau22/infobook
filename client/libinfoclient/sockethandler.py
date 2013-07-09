@@ -4,6 +4,7 @@
 from libinfo import EncryptionHandler
 import socket
 import binascii
+from re import split
 
 class SocketHandler:
 
@@ -21,6 +22,8 @@ class SocketHandler:
 		self.max_rcv = 4096
 		self.sock = Socket()
 
+		self.crypt = EncryptionHandler()
+
 		self.sid = None
 		self.uidstring = None
 
@@ -29,6 +32,28 @@ class SocketHandler:
 
 		if not self.get_sesskey():
 			raise RuntimeError("Error in client-server communication: DH exchange failed")
+
+
+
+
+    def write_loginfile(self, username, plain_password):
+    	"""
+    	Schreibt eine valide Login.dat Datei
+
+    	@param username: Nutzername
+    	@type username: str
+
+    	@param plain_password: Passwort im Klartext
+    	@type plain_password: str
+
+    	@return: None
+    	"""
+
+    	data = username + self.crypt.get_hash(plain_password)
+
+		loginfile = open("login.dat", 'w')
+        loginfile.write(data)
+        loginfile.close() 
 
 
 	def send(self, data, type_of_package):
@@ -60,12 +85,12 @@ class SocketHandler:
 
 		msg +=";"
 
-		if type_of_package != "DHEX":
+		if type_of_package != "dhex":
 			if self.sesskey == None:
 				raise Exception("No sesskey defined - aborting")
 				return False
-
-			msg += self.ec.encrypt(self.sesskey, self.counter, data)
+			data = self.crypt.encode(data)
+			msg += self.crypt.encrypt(self.sesskey, self.counter, data)
 		else:
 			msg += data
 
@@ -89,6 +114,9 @@ class SocketHandler:
 		    return False
 
 		self.sock.close()
+
+		if type_of_package != "dhex":
+			ret_data = self.crypt.decode(ret_data)
 
 		return ret_data
 
@@ -145,7 +173,7 @@ class SocketHandler:
 			self.sid = data[0]
 
 			# Sessionkey
-			self.sesskey = self.ec.generate_sesskey(num, int(b_data[1]), prime)
+			self.sesskey = self.crypt.generate_sesskey(num, int(b_data[1]), prime)
 
 			# Counter
 			iv = data[2]
@@ -199,34 +227,160 @@ class SocketHandler:
 			    if stay_loged_in == True:
 			        self.write_loginfile(username, password)
 
-			    password = self.ec.get_hash(password)
+			    password = self.crypt.get_hash(password)
 				plain = username + ":" + password
 
-			response = self.send(plain, "AUTH")
+			response = self.send(plain, "auth")
 			error = self.parse_error(response)
 
 			if error == False:
 				self.uidstring = response
 				return True
 			else:
+				raise RuntimeError(error)
 				return False
 
 
-    def write_loginfile(self, username, plain_password):
-    	"""
-    	Schreibt eine valide Login.dat Datei
 
-    	@param username: Nutzername
-    	@type username: str
+	def write_message(self, receiver, content):
+		"""
+		Schickt eine Nachricht an einen User
 
-    	@param plain_password: Passwort im Klartext
-    	@type plain_password: str
+		@param receiver: Empfaenger
+		@type receiver: str
 
-    	@return: None
-    	"""
+		@param content: Inhalt
+		@type content: str
 
-    	data = username + self.ec.get_hash(plain_password)
+		@return: Boolean Success
+		"""
 
-		loginfile = open("login.dat", 'w')
-        loginfile.write(data)
-        loginfile.close()    
+		if not isinstance(receiver, str):
+			raise TypeError("receiver must be str")
+			return False
+		if not isinstance(content, str):
+			raise TypeError("content must be str")
+			return False
+
+
+		data = self.uidstring + ":"
+		data += receiver + ":"
+		data += content
+
+		response = self.send(data, "msg")
+		error = self.parse_error(response)
+
+			if error == False:
+				return True
+			else:
+				raise RuntimeError(error)
+				return False
+
+
+
+	def get_messages(self, last_mid):
+		"""
+		Ruft Nachrichten vom Server ab
+
+		@param last_mid: Letzte bekannte Gruppennachrichten-ID
+		@type last_mid: int
+
+		@return: Array [str - sender, str - content], False bei Fehler, None bei keinen neuen Nachrichten
+		"""
+		
+		if not isinstance(last_mid, int):
+			raise TypeError("last_mid must be int")
+			return False
+
+		messages = self.send(str(last_mid), "get_msg")
+		ret_msg = []
+
+		if len(messages) == 0:
+			return None
+
+		elif len(messages) == 1:
+			error = self.parse_error(messages)
+
+			if not error:
+				return messages
+			else:
+				raise RuntimeError(error)
+				return False
+		else:
+			for item in messages:
+				parts = split(":", item, 2)
+				ret_msg.append((parts[0], parts[1]))
+			return ret_msg
+
+
+
+	def write_group_message(self, group_receiver, content):
+		"""
+		Schickt eine Nachricht an eine Gruppe
+
+		@param group_receiver: Empfaenger (Gruppe)
+		@type group_receiver: str
+
+		@param content: Inhalt
+		@type content: str
+
+		@return: Boolean Success
+		"""
+
+		if not isinstance(group_receiver, str):
+			raise TypeError("group_receiver must be str")
+			return False
+		if not isinstance(content, str):
+			raise TypeError("content must be str")
+			return False
+
+
+		data = self.uidstring + ":"
+		data += group_receiver + ":"
+		data += content
+
+		response = self.send(data, "gmsg")
+		error = self.parse_error(response)
+
+			if error == False:
+				return True
+			else:
+				raise RuntimeError(error)
+				return False
+
+
+
+	def get_group_messages(self, last_gmid):
+		"""
+		Ruft Gruppennachrichten vom Server ab
+
+		@param last_gmid: Letzte bekannte Gruppennachrichten-ID
+		@type last_gmid: int
+
+		@return: Array [str - sender, str - gruppe, str - content], False bei Fehler, None bei keinen neuen Nachrichten
+		"""
+
+		if not isinstance(last_gmid, int):
+			raise TypeError("last_gmid must be int")
+			return False
+
+
+		messages = self.send(str(last_mid), "get_gmsg")
+		ret_msg = []
+
+		if len(messages) == 0:
+			return None
+
+		elif len(messages) == 1:
+			error = self.parse_error(messages)
+
+			if not error:
+				return messages
+			else:
+				raise RuntimeError(error)
+				return False
+		else:
+			for item in messages:
+				parts = split(":", item, 3)
+				ret_msg.append((parts[0], parts[1], parts[1]))
+			return ret_msg

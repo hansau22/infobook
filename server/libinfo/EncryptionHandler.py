@@ -46,6 +46,32 @@ class EncryptionHandler:
 
 
 
+    def encode_string(self, data):
+        """
+        Encodiert einen String in UTF-8
+
+        @param data: String
+        @type data: str
+
+        @return: str - UTF-8 encodierter String
+        """
+        return data.encode("utf-8")
+
+
+
+    def decode_string(self, data):
+        """
+        Dekodiert einen String in UTF-8
+
+        @param data: String
+        @type data: str
+
+        @return: str - UTF-8 dekodierter String
+        """
+        return data.decode("utf-8")
+
+
+
     def init_dh_b(self, sessid, data):
         """ 
         Initialisierung des DH-Schluesselaustausches von B
