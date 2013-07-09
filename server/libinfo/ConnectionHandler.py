@@ -77,7 +77,7 @@ class ConnectionHandler:
 
                 # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
                 if self.crypt.is_encrypted(data):
-                    body = self.decrypt(data)
+                    body = self.crypt.decrypt(data)
 
                     # Wenn nicht entschluesselbar -> Fehler
                     if body == None:
@@ -125,12 +125,12 @@ class ConnectionHandler:
                     if self.header[0] == "dhex":
                         komm.send(resp)
 
-                    elif self.is_error(resp)
+                    elif self.is_error(resp):
                         print "error:  " + resp
                         komm.send(resp)
 
                     else:
-                        resp = self.encode_string(resp)
+                        resp = self.crypt.encode_string(resp)
                         komm.send(self.build_pack(resp))
                         
                     komm.close()
@@ -161,7 +161,7 @@ class ConnectionHandler:
             raise TypeError("Data must be str")
             return False
 
-        if data.find("error", beg=0 end=4) == -1 :
+        if data.find("error", beg=0, end=4) == -1 :
             return False
         else:
             return True
@@ -194,7 +194,7 @@ class ConnectionHandler:
             #print "sesskey :  " + ret[2]
 
             return ret[3]
-        except IndexError, e:
+        except IndexError:
             return "error - DH-initiation-server-error - DHEX"
         
 
@@ -221,31 +221,7 @@ class ConnectionHandler:
 
 
 
-    def decode_string(self, data):
-        """
-        Dekodiert einen String in UTF-8
-
-        @param data: String
-        @type data: str
-
-        @return: str - UTF-8 dekodierter String
-        """
-        return data.decode("utf-8")
-
-
-    def encode_string(self, data):
-        """
-        Encodiert einen String in UTF-8
-
-        @param data: String
-        @type data: str
-
-        @return: str - UTF-8 encodierter String
-        """
-        print data
-        return data.encode("utf-8")
-
-            
+    
     def encrypt(self, data):
         """
         Verschluesselt die Daten fuer ein Paket.
@@ -258,9 +234,8 @@ class ConnectionHandler:
         try:
             sid = self.header[2]
             return self.crypt.encrypt(self.sesskey[sid], self.ctr[sid], data)
-        except IndexError e:
+        except IndexError:
             return None
-
 
             
     def parse_header(self, data):
@@ -278,8 +253,8 @@ class ConnectionHandler:
             if not header[0] == "dhex":
                 header[2] = int(header[2])
             return header
-        except IndexError e:
-            raise e
+        except IndexError:
+            pass
         
 
 
@@ -437,7 +412,7 @@ class ConnectionHandler:
                 if groupname == None:
                     groupname = "Gruppenname unbekannt"
 
-                ret_msg.append(groupname + ":" + item[1])
+                ret_msg.append(item[1] + ":" + groupname + ":" + item[2])
 
             ret_msg.append("[FIN]")
             return ret_msg
