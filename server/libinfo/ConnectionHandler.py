@@ -120,14 +120,15 @@ class ConnectionHandler:
                     elif self.header[0] == "regfile":
                         resp = self.register_file(body)
 
-                    if "error" in resp:
-                    print "error:  " + resp
-                
 
                     # Antwortpaket senden
                     if self.header[0] == "dhex":
-                        #print "dhex resp" + resp
                         komm.send(resp)
+
+                    elif self.is_error(resp)
+                        print "error:  " + resp
+                        komm.send(resp)
+
                     else:
                         resp = self.encode_string(resp)
                         komm.send(self.build_pack(resp))
@@ -143,6 +144,27 @@ class ConnectionHandler:
             for client in clients: 
                 client.close() 
             serv_soc.close()
+
+
+
+    def is_error(self, data):
+        """
+        Prueft ob eine Antwort eine Fehlermeldung ist
+
+        @param data: Antwort
+        @type data: str
+
+        @return: Boolean Ergebnis
+        """
+
+        if not isinstance(date, str):
+            raise TypeError("Data must be str")
+            return False
+
+        if data.find("error", beg=0 end=4) == -1 :
+            return False
+        else:
+            return True
 
 
     def init_dh(self, data):
@@ -272,7 +294,7 @@ class ConnectionHandler:
         """
 
         try:
-            package = "none" + ":" + "12.12.12" + ":" + str(self.header[2]) + ";"
+            package = "sresp" + ":" + str(self.header[2]) + ";"
             enc_msg = self.encrypt(msg)
             if enc_msg == None:
                 return msg

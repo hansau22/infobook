@@ -37,8 +37,11 @@ class EncryptionHandler:
 
         tmp = split(":", data, 2)
         # Nur DHEX-Pakete sind unverschluesselt
-        if tmp[0] == "dhex":
-            return False
+        try:
+            if tmp[0] == "dhex":
+                return False
+        except Exception, e:
+            raise e
         return True
 
 

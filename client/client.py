@@ -27,13 +27,7 @@ sock = socket.socket()
 hashengine = SHA256.new()
 
 
-# Primitivwurzel
-proot = 3
-# Primzahl
-#prime = 2959259
-prime = 13
-# Zufaellige Nummer
-num = random.randrange(1, prime - 2, 1)
+
 
 
 if exists("login.dat") == True:
