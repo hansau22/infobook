@@ -38,10 +38,10 @@ class DatabaseHandler:
         @return: None
         """
         self.cursor.execute("CREATE TABLE IF NOT EXISTS users(uid INTEGER, username TEXT, password TEXT)")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS groups(gid Integer, member Integer, name Text)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS groups(gid INTEGER, member INTEGER, name Text)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS messages(mid INTEGER, uidsender INTEGER, uidreceiver INTEGER, content TEXT)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS groupmessages(bid INTEGER, uidsender INTEGER, gidreceiver INTEGER, content TEXT)")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS files(fid Integer, localname Text, globalname Text, owner Integer)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS files(fid INTEGER, localname Text, globalname Text, owner INTEGER)")
         self.db.commit()
 
         self.cursor.execute("SELECT uid FROM users WHERE uid = 0")
@@ -432,8 +432,6 @@ class DatabaseHandler:
         """
         self.cursor.execute("SELECT fid FROM files ORDER BY fid DESC")
         result = self.cursor.fetchone()
-        result = str(result)
         if result == None:
             return 0
-        result = int(result[0])
-        return (result + 1)   
+        return (result[0] + 1)   

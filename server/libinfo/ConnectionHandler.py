@@ -63,7 +63,7 @@ class ConnectionHandler:
         try:
             while True:
 
-                komm, addr = sock.accept()
+                komm, addr = serv_soc.accept()
                 data = ""
                 data = komm.recv(self.max_rcv)
 
@@ -77,7 +77,7 @@ class ConnectionHandler:
 
                 # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
                 if self.crypt.is_encrypted(data):
-                    body = self.crypt.decrypt(data)
+                    body = self.decrypt(data)
 
                     # Wenn nicht entschluesselbar -> Fehler
                     if body == None:
@@ -85,8 +85,7 @@ class ConnectionHandler:
                        komm.close()
                        continue 
 
-                    body = self.decode_string(body)
-                    #body = body.strip().decode("hex")
+                    #body = self.crypt.decode_string(body)
 
                 try:
                     # Kopfdaten und Nutzdaten trennen
@@ -130,8 +129,13 @@ class ConnectionHandler:
                         komm.send(resp)
 
                     else:
-                        resp = self.crypt.encode_string(resp)
-                        komm.send(self.build_pack(resp))
+                        if isinstance(resp, list):
+                            for item in resp:
+                                #item = self.crypt.encode_string(item)
+                                komm.send(self.build_pack(item))
+                        else:
+                            resp = self.crypt.encode_string(resp)
+                            komm.send(self.build_pack(resp))
                         
                     komm.close()
 
@@ -141,8 +145,8 @@ class ConnectionHandler:
 
                         
         finally:
-            for client in clients: 
-                client.close() 
+            #for client in clients: 
+            #    client.close() 
             serv_soc.close()
 
 
@@ -157,11 +161,11 @@ class ConnectionHandler:
         @return: Boolean Ergebnis
         """
 
-        if not isinstance(date, str):
+        if not isinstance(data, str):
             raise TypeError("Data must be str")
             return False
 
-        if data.find("error", beg=0, end=4) == -1 :
+        if string.find(data, "error", 0, 4) == -1 :
             return False
         else:
             return True
