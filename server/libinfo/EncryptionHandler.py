@@ -146,6 +146,8 @@ class EncryptionHandler:
         # Ergebnis Hashen
         sesskey = sha256(str(sesskey)).digest()
 
+        print sesskey
+
         return sesskey
 
 

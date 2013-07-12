@@ -85,7 +85,7 @@ class ConnectionHandler:
                        komm.close()
                        continue 
 
-                    #body = self.crypt.decode_string(body)
+                    body = body.decode("utf-8", "ignore")
 
                 try:
                     # Kopfdaten und Nutzdaten trennen
@@ -131,7 +131,7 @@ class ConnectionHandler:
                     else:
                         if isinstance(resp, list):
                             for item in resp:
-                                #item = self.crypt.encode_string(item)
+                                item = item.encode("utf-8", "ignore")
                                 komm.send(self.build_pack(item))
                         else:
                             resp = self.crypt.encode_string(resp)
