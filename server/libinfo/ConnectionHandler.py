@@ -161,10 +161,6 @@ class ConnectionHandler:
         @return: Boolean Ergebnis
         """
 
-        if not isinstance(data, str):
-            raise TypeError("Data must be str")
-            return False
-
         if string.find(data, "error", 0, 4) == -1 :
             return False
         else:
@@ -451,6 +447,7 @@ class ConnectionHandler:
                     return "error - server-database-error - GroupMessage"
                 return "success - GroupMessage"
             else:
+                print "error in uidstring"
                 return "error - wrong-uidstring - GroupMessage"
         except IndexError:
             return "error - invalid-header - GroupMessage"

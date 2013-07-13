@@ -269,10 +269,7 @@ class DatabaseHandler:
 
             @return: Boolean Erfolg
             """
-
-            # data = data.encode("utf-8")
-            
-            self.cursor.execute("INSERT INTO groupmessages VALUES(?, ?, ?, ?))", (self.bid_Pool.give_next(), uidSender, gidReceiver, data.encode("utf-8", "ignore")))
+            self.cursor.execute("INSERT INTO groupmessages VALUES(?, ?, ?, ?)", (self.bid_Pool.give_next(), uidSender, gidReceiver, data))
             self.db.commit()
             return True
 
