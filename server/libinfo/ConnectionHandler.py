@@ -124,15 +124,19 @@ class ConnectionHandler:
                     if self.header[0] == "dhex":
                         komm.send(resp)
 
-                    elif self.is_error(resp):
-                        print "error:  " + resp
-                        komm.send(resp)
-
-                    else:
-                        if isinstance(resp, list):
-                            for item in resp:
+                    elif isinstance(resp, list):
+                        for item in resp:
+                            if self.is_error(item):
+                                print "error:  " + item
+                                komm.send(item)
+                            else:
                                 item = item.encode("utf-8", "ignore")
                                 komm.send(self.build_pack(item))
+
+                    else:
+                        if self.is_error(resp):
+                            print "error:  " + resp
+                            komm.send(resp)
                         else:
                             resp = self.crypt.encode_string(resp)
                             komm.send(self.build_pack(resp))
@@ -383,7 +387,8 @@ class ConnectionHandler:
                 if username == None:
                     username = "Nutzer unbekannt"
 
-                ret_msg.append(username + ":" + item[1])
+                print type(item[1])
+                ret_msg.append(username + ":" + str(item[1]))
 
             ret_msg.append("[FIN]")
             return ret_msg

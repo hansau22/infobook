@@ -153,7 +153,7 @@ class DatabaseHandler:
         @return: str Name, None falls Name nicht gefunden
         """
 
-        self.cursor.execute("SELECT username FROM users WHERE uid=?", id)
+        self.cursor.execute("SELECT username FROM users WHERE uid=?", str(id))
         return self.cursor.fetchone()
 
 
@@ -215,7 +215,7 @@ class DatabaseHandler:
         @return Array - [Sender(str), Nachrichten(str)]
         """
 
-        self.cursor.execute("SELECT uidSender, content FROM messages WHERE MID > ?", last_mid)
+        self.cursor.execute("SELECT uidSender, content FROM messages WHERE MID > ?", [last_mid])
         
         ret_value = []
         result = self.cursor.fetchone()
