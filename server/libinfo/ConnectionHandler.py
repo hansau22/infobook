@@ -359,7 +359,7 @@ class ConnectionHandler:
                 snd_uid = self.users[self.header[2]]
                 print "writing message:" + tmp[2]
                 if not self.database.rcv_message(snd_uid, rcv_uid, tmp[2]):
-                    return "error - server-application-error - MSG"
+                    return "error - server-database-error - MSG"
                 return "success - MSG"
             else:
                 return "error - wrong-uidstring - MSG"
@@ -448,7 +448,7 @@ class ConnectionHandler:
                 snd_uid = self.users[self.header[2]]
                 print "writing message:" + tmp[2]
                 if not self.database.rcv_brdc_message(snd_uid, rcv_gid, tmp[2]):
-                    return "error - server-application-error - GroupMessage"
+                    return "error - server-database-error - GroupMessage"
                 return "success - GroupMessage"
             else:
                 return "error - wrong-uidstring - GroupMessage"

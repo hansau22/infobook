@@ -83,14 +83,7 @@ class DatabaseHandler:
         @return: None, False wenn Parameter nicht stimmen
         """
 
-        if not isinstance(uid, int):
-            return False
-        if not isinstance(username, str):
-            return False
-        if not isinstance(pwhash, str):
-            return False
-
-        self.cursor.execute("INSERT INTO users VALUES(%d, %s, %s)", (uid, username, pwhash))
+        self.cursor.execute("INSERT INTO users VALUES(?, ?, ?)", (uid, username, pwhash))
         self.db.commit()
 
 
@@ -108,12 +101,7 @@ class DatabaseHandler:
         @return: True, False wenn Parameter nicht stimmen oder Nutzer-Passwort Kombination falsch
         """ 
 
-        if not isinstance(username, str):
-            return False
-        if not isinstance(pwhash, str):
-            return False
-
-        self.cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, pwhash))
+        self.cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (str(username), str(pwhash)))
         if self.cursor.fetchone() != None:
             return True
         return False
@@ -130,14 +118,12 @@ class DatabaseHandler:
         @return: int Nutzer-ID, False bei unbekanntem Nutzer
         """
 
-        if not isinstance(username, str):
-            return False
 
-        self.cursor.execute("SELECT uid FROM users WHERE username=%s", username)
+        self.cursor.execute("SELECT uid FROM users WHERE username=?", [username])
         result = self.cursor.fetchone()
         if result == None:
             return False
-        return int(result)
+        return int(result[0])
 
 
     def get_group_id(self, name):
@@ -150,14 +136,11 @@ class DatabaseHandler:
         @return: int Gruppen-ID, False bei unbekannter Gruppe
         """
 
-        if not isinstance(name, str):
-            return False
-
-        self.cursor.execute("SELECT gid FROM groups WHERE name=%s", name)
+        self.cursor.execute("SELECT gid FROM groups WHERE name=?", [name])
         result = self.cursor.fetchone()
         if result == None:
             return False
-        return int(result)
+        return int(result[0])
 
 
     def get_user_by_id(self, id):
@@ -170,10 +153,7 @@ class DatabaseHandler:
         @return: str Name, None falls Name nicht gefunden
         """
 
-        if not isinstance(id, int):
-            return False
-
-        self.cursor.execute("SELECT username FROM users WHERE uid=%d", id)
+        self.cursor.execute("SELECT username FROM users WHERE uid=?", id)
         return self.cursor.fetchone()
 
 
@@ -188,10 +168,7 @@ class DatabaseHandler:
         @return: str Name - None falls Name nicht gefunden
         """
 
-        if not isinstance(gid, int):
-            return False
-
-        self.cursor.execute("SELECT name FROM groups WHERE gid=%d", gid)
+        self.cursor.execute("SELECT name FROM groups WHERE gid=?", gid)
         return self.cursor.fetchone()
 
         
@@ -210,24 +187,14 @@ class DatabaseHandler:
 
         @return: Boolean Erfolg
         """
-        
-        if not isinstance(uidSender, int):
-            return False
-        if not isinstance(uidReceiver, int):
-            return False
-        if not isinstance(data, str):
-            return False
-        
-        # Wiederholen, wenn uidReceiver eine Liste ist
-        #data = data.decode('utf-8').encode("utf-8")
 
         data = data.strip()
 
         if not isinstance(uidReceiver, list):
-            self.cursor.execute("INSERT INTO messages VALUES(%d, %d, %d, %s)", (self.mid_Pool.give_next(), uidSender, uidReceiver, data.encode("utf-8", "ignore")))
+            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, uidReceiver, data.encode("utf-8", "ignore")))
         else:
             for item in uidReceiver:
-                self.cursor.execute("INSERT INTO messages VALUES(%d, %d, %d, %s)", (self.mid_Pool.give_next(), uidSender, item, data.encode("utf-8", "ignore")))
+                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, item, data.encode("utf-8", "ignore")))
         
         self.db.commit()
         return True
@@ -248,12 +215,7 @@ class DatabaseHandler:
         @return Array - [Sender(str), Nachrichten(str)]
         """
 
-        if not isinstance(uidReceiver, int):
-            return False
-        if not isinstance(last_mid, int):
-            return False
-
-        self.cursor.execute("SELECT uidSender, content FROM messages WHERE MID > %d", last_mid)
+        self.cursor.execute("SELECT uidSender, content FROM messages WHERE MID > ?", last_mid)
         
         ret_value = []
         result = self.cursor.fetchone()
@@ -280,12 +242,7 @@ class DatabaseHandler:
         @return Array - [Sender(str), Gruppennachrichten(str)]
         """
 
-        if not isinstance(uidReceiver, int):
-            return False
-        if not isinstance(last_gid, int):
-            return False
-
-        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE bid > %d", last_gid)
+        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE bid > ?", last_gid)
 
         ret_value = []
         result = self.cursor.fetchone()
@@ -313,16 +270,9 @@ class DatabaseHandler:
             @return: Boolean Erfolg
             """
 
-            if not isinstance(uidSender, int):
-                return False
-            if not isinstance(uidReceiver, int):
-                return False
-            if not isinstance(data, str):
-                return False
-
             # data = data.encode("utf-8")
             
-            self.cursor.execute("INSERT INTO groupmessages VALUES(%d, %d, %d, %s))", (self.bid_Pool.give_next(), uidSender, gidReceiver, data.encode("utf-8", "ignore")))
+            self.cursor.execute("INSERT INTO groupmessages VALUES(?, ?, ?, ?))", (self.bid_Pool.give_next(), uidSender, gidReceiver, data.encode("utf-8", "ignore")))
             self.db.commit()
             return True
 
@@ -338,10 +288,7 @@ class DatabaseHandler:
         @return: Boolean Erfolg
         """
 
-        if not isinstance(local_name, str):
-            return False
-
-        self.cursor.execute("INSERT INTO files VALUES(%d, %s, %s, %d)", (self.fid_Pool.give_next(), local_name, "", 0))
+        self.cursor.execute("INSERT INTO files VALUES(?, ?, ?, ?)", (self.fid_Pool.give_next(), local_name, "", 0))
         self.db.commit()
         return True
 
@@ -363,14 +310,7 @@ class DatabaseHandler:
         @return: Boolean Erfolg
         """
 
-        if not isinstance(owner, int):
-            return False
-        if not isinstance(globalname, str):
-            return False
-        if not isinstance(filestring, str):
-            return False
-
-        self.cursor.execute("UPDATE files SET owner=%d, globalname=%s WHERE localname=%s", (owner, globalname, filestring))
+        self.cursor.execute("UPDATE files SET owner=?, globalname=? WHERE localname=?", (owner, globalname, filestring))
         self.db.commit()
         return True
 
@@ -386,10 +326,7 @@ class DatabaseHandler:
         @return Boolean Erfolg
         """
 
-        if not isinstance(filestring, str):
-            return False
-
-        self.cursor.execute("SELECT localname FROM files WHERE localname = %s", filestring)
+        self.cursor.execute("SELECT localname FROM files WHERE localname = ?", filestring)
         if self.cursor.fetchone() != None:
             return True
         return False
