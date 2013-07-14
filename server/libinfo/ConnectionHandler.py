@@ -11,6 +11,7 @@ import sys
 import os
 import binascii
 import string
+import json
 
 from re import split
 from random import choice
@@ -40,7 +41,7 @@ class ConnectionHandler:
         self.sid_Pool = Pool(0)
 
         self.file_storage = "./files/"
-        self.max_rcv = 4096
+        self.max_rcv = 2048
 
         self.users = []         # Nutzer, die zum Index Session-ID gehoeren
         self.ivs = []           # Initialiserungsvektoren
@@ -125,13 +126,13 @@ class ConnectionHandler:
                         komm.send(resp)
 
                     elif isinstance(resp, list):
-                        for item in resp:
-                            if self.is_error(item):
-                                print "error:  " + item
-                                komm.send(item)
-                            else:
-                                item = item.encode("utf-8", "ignore")
-                                komm.send(self.build_pack(item))
+                        #for item in resp:
+                            #item = (str(item[0]).encode("utf-8", "ignore"), item[1].encode("utf-8", "ignore"))
+
+                        print "json element :"
+                        print json.dumps(resp)
+
+                        komm.send(self.build_pack(json.dumps(resp)))
 
                     else:
                         if self.is_error(resp):
@@ -377,20 +378,26 @@ class ConnectionHandler:
 
         @return: Array - Nachrichten
         """
+
+        data = split(":", data, 2)
+
         try:
-            messages = self.database.get_messages_by_last_mid(self.header[2], data)
+
+            if not self.check_uidstring(self.header[2], data[0]):
+                print "wrong uid string"
+                return "error - wrong-credentials - GetMessage"
+
+            messages = self.database.get_messages_by_last_mid(self.header[2], data[1])
             ret_msg = []
 
             for item in messages:
                 username = self.database.get_user_by_id(item[0])
 
-                if username == None:
+                if (username == None) or (item[0] == "False"):
                     username = "Nutzer unbekannt"
 
-                print type(item[1])
-                ret_msg.append(username + ":" + str(item[1]))
+                ret_msg.append((username, item[1]))
 
-            ret_msg.append("[FIN]")
             return ret_msg
         except IndexError:
             return "error - internal-database-request-error - MSG"
@@ -407,8 +414,15 @@ class ConnectionHandler:
         @return: Array - Nachrichten
         """
 
+        data = split(":", data, 2)
+
         try:
-            messages = self.database.get_messages_by_last_gid(self.header[2], data)
+
+            if not self.check_uidstring(self.header[2], data[0]):
+                print "wrong uid string"
+                return "error - wrong-credentials - GetGroupMessage"
+
+            messages = self.database.get_messages_by_last_gid(self.header[2], data[1])
             ret_msg = []
 
             for item in messages:
@@ -419,7 +433,6 @@ class ConnectionHandler:
 
                 ret_msg.append(item[1] + ":" + groupname + ":" + item[2])
 
-            ret_msg.append("[FIN]")
             return ret_msg
         except IndexError:
             return "error - internal-database-request-error - GroupMessage"
