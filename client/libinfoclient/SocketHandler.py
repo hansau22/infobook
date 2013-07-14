@@ -1,0 +1,428 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from libinfo import EncryptionHandler
+import socket
+import binascii
+from re import split
+import random
+import string
+from os.path import exists
+import json
+
+from Crypto.Util import Counter as Counter
+from Crypto.Cipher import AES as AES
+
+class SocketHandler:
+
+	def __init__(self, server, port):
+
+		if not isinstance(server, str):
+			raise TypeError("Server's IP Adress must be str")
+			return False
+		if not isinstance(port, int):
+			raise TypeError("Server's Port must be int")
+			return False
+
+		self.server = server
+		self.port = port
+		self.max_rcv = 2048
+		self.sock = socket.socket()
+
+		self.crypt = EncryptionHandler()
+
+		self.sid = None
+		self.uidstring = None
+
+		self.sesskey = None
+		self.counter = None
+
+		self.retry_counter = None
+		self.max_retry = 10
+
+		if not self.get_sesskey():
+			raise RuntimeError("Error in client-server communication: DH exchange failed")
+
+
+	def send(self, data, type_of_package):
+		"""
+		Sendet einen Datensatz in der Paketstruktur verpackt an den Server und gibt antwort zurueck
+
+		@param data: Datensatz
+		@type_of_package data: str
+
+		@param type_of_package: Typ des Pakets
+		@type type_of_package: str
+
+		@return: str - Ergebnis, None bei Fehler
+		"""
+
+		if not isinstance(type_of_package, str):
+			raise TypeError("Type must be str")
+			return False
+
+		# Paket nach Protokollstandart zusammenbauen
+
+		msg = type_of_package + ":"
+		msg += "12.12.12" + ":"
+
+		if self.sid == None:
+			msg += "x"
+		else:
+			msg += self.sid
+
+		msg +=";"
+
+		#if (type_of_package != "dhex") or not "get" in type_of_package :
+		if type_of_package != "dhex":
+			if self.sesskey == None:
+				raise Exception("No sesskey defined - aborting")
+				return False
+
+
+			data = data.encode("utf-8")
+			msg += self.crypt.encrypt(self.sesskey, self.counter, data)
+
+		else:
+			msg += data
+
+		self.sock = socket.socket()
+		self.sock.connect((self.server, self.port))
+		self.sock.send(msg)
+
+		# Auf Antwort warten
+		for attempt in range(10):
+		    try:
+		       ret_data = self.sock.recv(self.max_rcv)
+		    except EnvironmentError as exc:
+		        if exc.errno == errno.ECONNREFUSED:
+		            time.sleep(1)
+		        else:
+		            raise
+		    else:
+		        break
+		else: 
+		    raise RuntimeError("maximum number of unsuccessful attempts reached")
+		    return False
+
+
+		self.sock.close()
+
+		try:
+			if type_of_package != "dhex":
+				ret_data = ret_data.split(";", 2)
+				ret_data = ret_data[1]
+				ret_data = self.crypt.decrypt(self.sesskey, self.counter, ret_data)
+
+				if "get" in type_of_package:
+					try:
+						ret_data = json.loads(ret_data)
+
+					except ValueError:
+						return False
+				else:
+						ret_data = ret_data.decode("utf-8", "ignore")
+
+		except IndexError as error:
+			print error
+			return False
+
+		return ret_data
+
+
+	def parse_error(self, data):
+		"""
+		Extrahiert Fehlermeldungen aus einem Antwortpaket
+
+		@param data: Antwortpaket
+		@type data: str
+
+		@return: 2x Tuple (str - Stelle, str - Fehler), False falls es kein Fehler ist
+		"""
+
+		try:
+			#if string.find(data,"error", 0, 4) == -1 :
+			if not "error - " in data:
+				return False
+			else:
+				data = data.split(" - ", 3)
+				return (data[2], data[1])
+
+		except IndexError:
+			if isinstance(data, list):
+				for item in data:
+					print "error: " + item
+			else:
+				raise RuntimeError("Wrong server response :" + data)
+
+			return False
+
+
+
+	def get_sesskey(self):
+		"""
+		Generiert einen Sessionkey durch einen DH-Schluesselaustausch mit dem Server
+
+		@return: Boolean success
+		"""
+
+		proot = 3
+		#prime = 2959259
+		prime = 13
+		num = random.randrange(1, prime - 2, 1)
+
+		a = proot**num % prime
+
+		b_data = self.send(str(a), "dhex")
+
+		try:
+
+			# Antwortpaket auswerten
+			b_data = split(":", b_data)
+
+			# Session-ID
+			self.sid = b_data[0]
+
+			# Sessionkey
+			self.sesskey = self.crypt.generate_sesskey(num, int(b_data[1]), prime)
+
+			# Counter
+			iv = b_data[2]
+			#iv = binascii.unhexlify(iv)
+			self.counter = Counter.new(128, initial_value=long(iv, 16))
+			return True
+
+		except IndexError as error:
+			print error
+			return False
+
+
+
+	def auth(self, username, password, stay_logged_in):	
+		"""
+		Authentifiziert einen Nutzer
+
+		@param username: Nutzername
+		@type username: str
+
+		@param password: Passwort
+		@type password: str
+
+		@param stay_logged_in: Boolean ob der Nutzer eingeloggt beleiben soll
+		@type stay_logged_in: Boolean
+
+		@return: Boolean Success
+		"""
+
+		if not isinstance(stay_logged_in, bool):
+			raise TypeError("stay_logged_in must be bool")
+			return False
+
+		if (username == None) or (password == None):
+			if exists("login.dat") == True:
+			    plain = open('login.dat', 'r').read()
+			    plain_list = plain.split('\n')
+
+			    if len(plain_list) > 0:
+			        plain = str(plain_list[0])
+			else:
+				raise RuntimeError("Login.dat content invalid and no password/username given")
+				return False
+		else:
+			if stay_logged_in == True:
+				self.write_loginfile(username, password)
+
+			password = self.crypt.get_hash(password)
+			plain = username + ":" + password
+
+		response = self.send(plain, "auth")
+
+		error = self.parse_error(response)
+
+		if error == False:
+			self.uidstring = response
+			return True
+		else:
+			#raise RuntimeError(error)
+			print error
+			return False
+
+
+
+	def write_message(self, receiver, content):
+		"""
+		Schickt eine Nachricht an einen User
+
+		@param receiver: Empfaenger
+		@type receiver: str
+
+		@param content: Inhalt
+		@type content: str
+
+		@return: Boolean Success
+		"""
+
+		if not isinstance(receiver, str):
+			raise TypeError("receiver must be str")
+			return False
+		if not isinstance(content, str):
+			raise TypeError("content must be str")
+			return False
+
+
+		data = self.uidstring + ":"
+		data += receiver + ":"
+		data += content
+
+		response = self.send(data, "msg")
+		error = self.parse_error(response)
+
+		if error == False:
+			return True
+		else:
+			raise RuntimeError(error)
+			return False
+
+
+
+	def get_messages(self, last_mid):
+		"""
+		Ruft Nachrichten vom Server ab
+
+		@param last_mid: Letzte bekannte Gruppennachrichten-ID
+		@type last_mid: int
+
+		@return: Array [str - sender, str - content], False bei Fehler, None bei keinen neuen Nachrichten
+		"""
+
+		msg = self.uidstring + ":" + str(last_mid)
+
+		messages = self.send(msg, "getmsg")
+		#messages = pickle.loads(messages)
+		ret_msg = []
+
+		if not messages:
+			return False
+
+		if isinstance(messages, int):
+			print messages
+			return False
+
+		if len(messages) == 0:
+			return None
+
+		elif len(messages) == 1:
+			error = self.parse_error(messages)
+
+			if not error:
+				return messages
+			else:
+				raise RuntimeError(error)
+				return False
+		else:
+			try:
+				for item in messages:
+					#parts = split(":", item, 2)
+					ret_msg.append((item[0], item[1]))
+				return ret_msg
+			except IndexError as error:
+				raise IndexError(error)
+				return False
+
+
+
+	def write_group_message(self, group_receiver, content):
+		"""
+		Schickt eine Nachricht an eine Gruppe
+
+		@param group_receiver: Empfaenger (Gruppe)
+		@type group_receiver: str
+
+		@param content: Inhalt
+		@type content: str
+
+		@return: Boolean Success
+		"""
+
+		if not isinstance(group_receiver, str):
+			raise TypeError("group_receiver must be str")
+			return False
+		if not isinstance(content, str):
+			raise TypeError("content must be str")
+			return False
+
+
+		data = self.uidstring + ":"
+		data += group_receiver + ":"
+		data += content
+
+		response = self.send(data, "gmsg")
+		error = self.parse_error(response)
+
+		if error == False:
+			return True
+		else:
+			raise RuntimeError(error)
+			return False
+
+
+
+	def get_group_messages(self, last_gmid):
+		"""
+		Ruft Gruppennachrichten vom Server ab
+
+		@param last_gmid: Letzte bekannte Gruppennachrichten-ID
+		@type last_gmid: int
+
+		@return: Array [str - sender, str - gruppe, str - content], False bei Fehler, None bei keinen neuen Nachrichten
+		"""
+
+		if not isinstance(last_gmid, int):
+			raise TypeError("last_gmid must be int")
+			return False
+
+
+		msg = self.uidstring + ":" + str(last_gmid)
+
+
+		messages = self.send(msg, "getgmsg")
+		ret_msg = []
+
+		if len(messages) == 0:
+			return None
+
+		elif len(messages) == 1:
+			error = self.parse_error(messages)
+
+			if not error:
+				return messages
+			else:
+				raise RuntimeError(error)
+				return False
+		else:
+			for item in messages:
+				parts = split(":", item, 3)
+				ret_msg.append((parts[0], parts[1], parts[1]))
+			return ret_msg
+
+
+	def write_loginfile(self, username, plain_password) :
+		"""
+		Schreibt eine valide Login.dat Datei
+
+		@param username: Nutzername
+		@type username: str
+
+		@param plain_password: Passwort im Klartext
+		@type plain_password: str
+
+		@return: None
+		"""
+
+		data = username + self.crypt.get_hash(plain_password)
+
+		loginfile = open("login.dat", 'w')
+		loginfile.write(data)
+		loginfile.close() 
+
+
