@@ -48,3 +48,14 @@ libinfo.Pool	libinfo.Pool-class.html
 libinfo.Pool.give_next	libinfo.Pool-class.html#give_next
 libinfo.Pool.remove	libinfo.Pool-class.html#remove
 libinfo.Pool.__init__	libinfo.Pool-class.html#__init__
+libinfoclient.SocketHandler	libinfoclient.SocketHandler-class.html
+libinfoclient.SocketHandler.write_group_message	libinfoclient.SocketHandler-class.html#write_group_message
+libinfoclient.SocketHandler.write_loginfile	libinfoclient.SocketHandler-class.html#write_loginfile
+libinfoclient.SocketHandler.get_group_messages	libinfoclient.SocketHandler-class.html#get_group_messages
+libinfoclient.SocketHandler.send	libinfoclient.SocketHandler-class.html#send
+libinfoclient.SocketHandler.write_message	libinfoclient.SocketHandler-class.html#write_message
+libinfoclient.SocketHandler.auth	libinfoclient.SocketHandler-class.html#auth
+libinfoclient.SocketHandler.parse_error	libinfoclient.SocketHandler-class.html#parse_error
+libinfoclient.SocketHandler.get_sesskey	libinfoclient.SocketHandler-class.html#get_sesskey
+libinfoclient.SocketHandler.__init__	libinfoclient.SocketHandler-class.html#__init__
+libinfoclient.SocketHandler.get_messages	libinfoclient.SocketHandler-class.html#get_messages
