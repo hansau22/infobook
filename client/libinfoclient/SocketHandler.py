@@ -76,7 +76,7 @@ class SocketHandler:
 		#if (type_of_package != "dhex") or not "get" in type_of_package :
 		if type_of_package != "dhex":
 			if self.sesskey == None:
-				raise Exception("No sesskey defined - aborting")
+				raise RuntimeError("No sesskey defined - aborting")
 				return False
 
 
@@ -118,13 +118,15 @@ class SocketHandler:
 					try:
 						ret_data = json.loads(ret_data)
 
-					except ValueError:
+					except ValueError as error:
+						print "Error in JSON decoding"
+						raise RuntimeError(error)
 						return False
 				else:
 						ret_data = ret_data.decode("utf-8", "ignore")
 
 		except IndexError as error:
-			print error
+			raise IndexError(error)
 			return False
 
 		return ret_data
@@ -239,7 +241,7 @@ class SocketHandler:
 
 		error = self.parse_error(response)
 
-		if error == False:
+		if not error:
 			self.uidstring = response
 			return True
 		else:
@@ -297,36 +299,43 @@ class SocketHandler:
 
 		msg = self.uidstring + ":" + str(last_mid)
 
-		messages = self.send(msg, "getmsg")
+		try:
+			messages = self.send(msg, "getmsg")
+
+		except (RuntimeError, ValueError, TypeError) as error:
+			print error
+			return False
 		#messages = pickle.loads(messages)
 		ret_msg = []
 
-		if not messages:
-			return False
+		#if not messages:
+		#	raise RuntimeError("No messages have been received")
+		#	return False
 
 		if isinstance(messages, int):
-			print messages
+			raise RuntimeError("server communication failed")
 			return False
 
 		if len(messages) == 0:
+			raise RuntimeError("Messages empty")
 			return None
 
-		elif len(messages) == 1:
+		elif isinstance(messages, str):
 			error = self.parse_error(messages)
 
 			if not error:
 				return messages
 			else:
-				raise RuntimeError(error)
 				return False
 		else:
 			try:
 				for item in messages:
 					#parts = split(":", item, 2)
 					ret_msg.append((item[0], item[1]))
+				print "returning ret_msg"
 				return ret_msg
 			except IndexError as error:
-				raise IndexError(error)
+				print error
 				return False
 
 

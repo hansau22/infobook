@@ -460,7 +460,7 @@ class ConnectionHandler:
             if self.check_uidstring(sid, tmp[0]):
                 rcv_gid = self.database.get_group_id(tmp[1])
                 snd_uid = self.users[self.header[2]]
-                print "writing message:" + tmp[2]
+                print "writing group message:" + tmp[2]
                 if not self.database.rcv_brdc_message(snd_uid, rcv_gid, tmp[2]):
                     return "error - server-database-error - GroupMessage"
                 return "success - GroupMessage"
