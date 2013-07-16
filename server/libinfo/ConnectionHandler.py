@@ -10,8 +10,9 @@ import select
 import sys
 import os
 import binascii
+import base64
 import string
-import json
+import simplejson as json
 
 from re import split
 from random import choice
@@ -28,7 +29,7 @@ class ConnectionHandler:
     Eine Dokumentation des Ablaufes finden Sie im GitHub-Wiki unter https://github.org/hansau22/infobook/
     """
 
-    def __init__(self):
+    def __init__(self, port=False):
         """
         Initialisierung und Binden des Ports.
         Der Port kann via Shell-Argument uebergeben werden, sonst wird versucht, Port 32323 zu binden.
@@ -54,7 +55,9 @@ class ConnectionHandler:
 
         serv_soc = socket.socket()
 
-        if len(sys.argv) < 2:
+        if port != False:
+            serv_soc.bind(("", port))
+        elif len(sys.argv) < 2:
             serv_soc.bind(("", 32323))
         else:
             serv_soc.bind(("", int(sys.argv[1])))
@@ -79,6 +82,7 @@ class ConnectionHandler:
                 # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
                 if self.crypt.is_encrypted(data):
                     body = self.decrypt(data)
+                    print "getting messages :" + body
 
                     # Wenn nicht entschluesselbar -> Fehler
                     if body == None:
@@ -128,9 +132,6 @@ class ConnectionHandler:
                     elif isinstance(resp, list):
                         #for item in resp:
                             #item = (str(item[0]).encode("utf-8", "ignore"), item[1].encode("utf-8", "ignore"))
-
-                        print "json element :"
-                        print json.dumps(resp)
 
                         komm.send(self.build_pack(json.dumps(resp)))
 
@@ -238,7 +239,8 @@ class ConnectionHandler:
         """
         try:
             sid = self.header[2]
-            return self.crypt.encrypt(self.sesskey[sid], self.ctr[sid], data)
+            #return self.crypt.encrypt(self.sesskey[sid], self.ctr[sid], data)
+            return data
         except IndexError:
             return None
 
@@ -384,7 +386,7 @@ class ConnectionHandler:
         try:
 
             if not self.check_uidstring(self.header[2], data[0]):
-                print "wrong uid string"
+              #  print "wrong uid string :" + data[0]
                 return "error - wrong-credentials - GetMessage"
 
             messages = self.database.get_messages_by_last_mid(self.header[2], data[1])

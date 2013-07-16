@@ -4,11 +4,12 @@
 from libinfo import EncryptionHandler
 import socket
 import binascii
+import base64
 from re import split
 import random
 import string
 from os.path import exists
-import json
+import simplejson as json
 
 from Crypto.Util import Counter as Counter
 from Crypto.Cipher import AES as AES
@@ -82,6 +83,7 @@ class SocketHandler:
 
 			data = data.encode("utf-8")
 			msg += self.crypt.encrypt(self.sesskey, self.counter, data)
+#			msg += data
 
 		else:
 			msg += data
@@ -110,16 +112,19 @@ class SocketHandler:
 
 		try:
 			if type_of_package != "dhex":
+				if "error" in ret_data:
+					return ret_data
+
 				ret_data = ret_data.split(";", 2)
 				ret_data = ret_data[1]
-				ret_data = self.crypt.decrypt(self.sesskey, self.counter, ret_data)
+				#ret_data = self.crypt.decrypt(self.sesskey, self.counter, ret_data)
 
 				if "get" in type_of_package:
 					try:
 						ret_data = json.loads(ret_data)
 
 					except ValueError as error:
-						print "Error in JSON decoding"
+						print "Error in JSON decoding :" + ret_data
 						raise RuntimeError(error)
 						return False
 				else:
