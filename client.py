@@ -140,7 +140,7 @@ cipher = AES.new(sesskey, AES.MODE_CTR, counter=ctr)
 #else:
 
 
-#plain = "test:8b2d38b789e90bb18567c2be4abbd4295f461f6453dd0447a3bf248a75eb0ae7"
+#plain = "meop:8b2d38b789e90bb18567c2be4abbd4295f461f6453dd0447a3bf248a75eb0ae7"
 msg = ""
 msg += "auth" + ":"
 msg += "12.12.12" + ":"
