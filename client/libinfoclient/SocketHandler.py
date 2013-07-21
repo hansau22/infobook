@@ -86,8 +86,8 @@ class SocketHandler:
 
 
 			data = data.encode("utf-8")
-			msg += self.crypt.encrypt(self.sesskey, self.counter, data)
-#			msg += data
+			#msg += self.crypt.encrypt(self.sesskey, self.counter, data)
+			msg += data
 
 		else:
 			msg += data
@@ -453,13 +453,13 @@ class SocketHandler:
 		"""
 
 		ret = self.send("", "reqfile")
-		
+
 		error = self.parse_error(ret)
 		if not error:
 				return ret
-			else:
-				raise RuntimeError(error)
-				return False
+		else:
+			raise RuntimeError(error)
+			return False
 
 
 	def get_globalname(self, filestring):
@@ -477,9 +477,9 @@ class SocketHandler:
 		error = self.parse_error(ret)
 		if not error:
 				return ret
-			else:
-				raise RuntimeError(error)
-				return False
+		else:
+			raise RuntimeError(error)
+			return False
 
 
 

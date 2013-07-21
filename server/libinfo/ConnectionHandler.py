@@ -81,7 +81,8 @@ class ConnectionHandler:
 
                 # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
                 if self.crypt.is_encrypted(data):
-                    body = self.decrypt(data)
+                    #body = self.decrypt(data)
+                    body = data
                     print "getting messages :" + body
 
                     # Wenn nicht entschluesselbar -> Fehler
@@ -279,10 +280,10 @@ class ConnectionHandler:
 
         try:
             package = "sresp" + ":" + str(self.header[2]) + ";"
-            enc_msg = self.encrypt(msg)
-            if enc_msg == None:
-                return msg
-            package += enc_msg
+            #enc_msg = self.encrypt(msg)
+            #if enc_msg == None:
+            #    return msg
+            package += msg
             return package
         except IndexError:
             return msg

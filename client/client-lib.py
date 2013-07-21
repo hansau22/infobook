@@ -20,15 +20,15 @@ if not so.auth(None, None, True):
 	print "error in auth"
 	exit()
 
-if so.write_group_message("meop", str(datetime.time(datetime.now()))):
-	print "geht"
-else:
-	print "fail"
+#if so.write_group_message("meop", str(datetime.time(datetime.now()))):
+#	print "geht"
+#else:
+#	print "fail"
 
 
-messages = so.get_messages("1")
-print messages
-counter = 0
+#messages = so.get_messages("1")
+#print messages
+#counter = 0
 
 
 # while counter < 5:
@@ -56,6 +56,7 @@ counter = 0
 
 
 filestring = so.request_file()
+print filestring
 if filestring:
 	if not so.upload_file(filestring, "/home/julian/asdf", "asdf"):
 		print "error in file sending"
