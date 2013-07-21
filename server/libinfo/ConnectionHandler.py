@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from  libinfo.EncryptionHandler import EncryptionHandler
 from  libinfo.DatabaseHandler import DatabaseHandler
 #from  libinfo import DatabaseHandler
@@ -7,7 +9,10 @@ import socket
 import select
 import sys
 import os
+import binascii
+import base64
 import string
+import simplejson as json
 
 from re import split
 from random import choice
@@ -24,7 +29,7 @@ class ConnectionHandler:
     Eine Dokumentation des Ablaufes finden Sie im GitHub-Wiki unter https://github.org/hansau22/infobook/
     """
 
-    def __init__(self):
+    def __init__(self, port=False):
         """
         Initialisierung und Binden des Ports.
         Der Port kann via Shell-Argument uebergeben werden, sonst wird versucht, Port 32323 zu binden.
@@ -37,7 +42,7 @@ class ConnectionHandler:
         self.sid_Pool = Pool(0)
 
         self.file_storage = "./files/"
-        self.max_rcv = 4096
+        self.max_rcv = 2048
 
         self.users = []         # Nutzer, die zum Index Session-ID gehoeren
         self.ivs = []           # Initialiserungsvektoren
@@ -49,110 +54,123 @@ class ConnectionHandler:
         #file_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         serv_soc = socket.socket()
-        file_soc = socket.socket()
 
-        if len(sys.argv) < 2:
+        if port != False:
+            serv_soc.bind(("", port))
+        elif len(sys.argv) < 2:
             serv_soc.bind(("", 32323))
-            file_soc.bind(("", 32324))
         else:
             serv_soc.bind(("", int(sys.argv[1])))
-            file_soc.bind(("", int(sys.argv[1]) + 1))
 
         serv_soc.listen(1)
-        file_soc.listen(1)
-
-        clients = []
-        file_sender = []
         
         try:
             while True:
 
-                read, write, oob = select.select([serv_soc, file_soc], [], [])
+                komm, addr = serv_soc.accept()
+                data = ""
+                data = komm.recv(self.max_rcv)
 
-                for sock in read:
+                # Default-Antwort
+                resp = "error - invalid-client-request"
 
-                    # Verbindungsaufbauf fand auf der Server-Socket statt
-                    if sock is serv_soc:
-                        komm, addr = sock.accept()
-                        data = ""
-                        data = komm.recv(self.max_rcv)
+                # Leere Verbindung
+                if not data: 
+                    komm.close()
+                    continue
 
-                        # Leere Verbindung
-                        if not data: 
-                            komm.close()
-                            continue
+                # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
+                if self.crypt.is_encrypted(data):
+                    body = self.decrypt(data)
+                    print "getting messages :" + body
 
-                        # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
-                        if self.crypt.is_encrypted(data):
-                            body = self.decrypt(data)
+                    # Wenn nicht entschluesselbar -> Fehler
+                    if body == None:
+                       komm.send(resp)
+                       komm.close()
+                       continue 
 
-                        # Kopfdaten und Nutzdaten trennen
-                        data = split(";", data, 1)
-                        self.header = self.parse_header(data[0])
-                        data = data[1]
+                    body = body.decode("utf-8", "ignore")
 
-                        # Datenpaket encoden
-                        if self.header[0] != "dhex":
-                            self.encode_string(body)
-                        
-                        # Default-Antwort
-                        resp = "error - invalid-client-request" 
+                try:
+                    # Kopfdaten und Nutzdaten trennen
+                    data = split(";", data, 1)
+                    self.header = self.parse_header(data[0])
+                    data = data[1]
+                except IndexError:
+                    komm.send(resp)
+                    komm.close()
+                    continue
 
-                        if self.header[0] == "dhex":
-                            resp = self.init_dh(data)                      
-                        elif self.header[0] == "auth":
-                            resp = self.auth_user(body)
-                        elif self.header[0] == "msg":
-                            resp = self.recv_msg(body)
-                        elif self.header[0] == "getmsg":
-                            resp = self.get_msg(body)
-                        elif self.header[0] == "gmsg":
-                            resp = self.recv_gmsg(body)
-                        elif self.header[0] == "getgmsg":
-                            resp = self.get_gmsg(body)
-                        elif self.header[0] == "regfile":
-                            resp = self.register_file(body)
+                # Datenpaket encoden
+                #if self.header[0] != "dhex":
+
+                try:
+
+                    if self.header[0] == "dhex":
+                        resp = self.init_dh(data)                      
+                    elif self.header[0] == "auth":
+                        resp = self.auth_user(body)
+                    elif self.header[0] == "msg":
+                        resp = self.recv_msg(body)
+                    elif self.header[0] == "getmsg":
+                        resp = self.get_msg(body)
+                    elif self.header[0] == "gmsg":
+                        resp = self.recv_gmsg(body)
+                    elif self.header[0] == "getgmsg":
+                        resp = self.get_gmsg(body)
+                    elif self.header[0] == "reqfile":
+                        resp = self.request_file()
+                    elif self.header[0] == "regfile":
+                        resp = self.register_file(body)
 
 
-                        if "error" in resp:
+                    # Antwortpaket senden
+                    if self.header[0] == "dhex":
+                        komm.send(resp)
+
+                    elif isinstance(resp, list):
+                        #for item in resp:
+                            #item = (str(item[0]).encode("utf-8", "ignore"), item[1].encode("utf-8", "ignore"))
+
+                        komm.send(self.build_pack(json.dumps(resp)))
+
+                    else:
+                        if self.is_error(resp):
                             print "error:  " + resp
-                        
-
-                        # Antwortpaket senden
-                        if self.header[0] == "dhex":
-                            #print "dhex resp" + resp
                             komm.send(resp)
                         else:
-                            resp = self.encode_string(resp)
+                            resp = self.crypt.encode_string(resp)
                             komm.send(self.build_pack(resp))
-                            
-                        komm.close()
-
-                    # Verbindung wurde ueber Dateisendungs-Socket aufgebaut
-                    elif sock is file_soc:
-                        komm, addr = sock.accept()
-
-                        filestring = self.generate_file_string()
-                        targ_file = self.file_storage + filestring
-                        f = open(targ_file, 'wb')
-
-                        data = komm.recv(self.max_rcv)
-                        while data and data != "[FIN]":
-                            f.write(data)
-                            data = komm.recv(self.max_rcv)
                         
-                        komm.send(filestring)
-                        print filestring
-                        komm.close()
-                        f.close()
+                    komm.close()
 
-                        self.database.add_file(filestring)
+                except IndexError:
+                    komm.send(resp)
+                    komm.close()
+
                         
         finally:
-            for client in clients: 
-                client.close() 
+            #for client in clients: 
+            #    client.close() 
             serv_soc.close()
-            file_soc.close()
+
+
+
+    def is_error(self, data):
+        """
+        Prueft ob eine Antwort eine Fehlermeldung ist
+
+        @param data: Antwort
+        @type data: str
+
+        @return: Boolean Ergebnis
+        """
+
+        if string.find(data, "error", 0, 4) == -1 :
+            return False
+        else:
+            return True
 
 
     def init_dh(self, data):
@@ -168,16 +186,23 @@ class ConnectionHandler:
         # DH-Antwort (B) auf die Anfrage (A)
         ret = self.crypt.init_dh_b(self.sid_Pool.give_next(),data)
 
-        # Alle Felder fuer die neu Initialiserte Session reservieren (befuellen)
-        self.users.append("")
-        self.uidstrings.append("")
-        self.ivs.append(ret[0])
-        self.ctr.append(ret[1])
-        self.sesskey.append(ret[2])
+        if ret == False:
+            return "error - DH-initiation-error - DHEX"
 
-        #print "sesskey :  " + ret[2]
+        try:
+            # Alle Felder fuer die neu Initialiserte Session reservieren (befuellen)
+            self.users.append("")
+            self.uidstrings.append("")
+            self.ivs.append(ret[0])
+            self.ctr.append(ret[1])
+            self.sesskey.append(ret[2])
 
-        return ret[3]
+            #print "sesskey :  " + ret[2]
+
+            return ret[3]
+        except IndexError:
+            return "error - DH-initiation-server-error - DHEX"
+        
 
 
 
@@ -191,26 +216,18 @@ class ConnectionHandler:
         @return: str - Unverschluesseltes Paket ohne Kopfinformationen
         """
 
-        tmp = split(";", data, 1)       # ";" Seperiert Nutz- und Kopfdaten
-        sid = split(":", tmp[0], 2)     # Extrahiere Session-ID
-        sid = int(sid[2])
-        data = self.crypt.decrypt(self.sesskey[sid], self.ctr[sid], tmp[1])
-        return data
+        try:
+            tmp = split(";", data, 1)       # ";" Seperiert Nutz- und Kopfdaten
+            sid = split(":", tmp[0], 2)     # Extrahiere Session-ID
+            sid = int(sid[2])
+            data = self.crypt.decrypt(self.sesskey[sid], self.ctr[sid], tmp[1])
+            return data
+        except IndexError:
+            return None
 
 
 
-    def encode_string(self, data):
-        """
-        Dekodiert einen String in UTF-8
-
-        @param data: String
-        @type data: str
-
-        @return: str - UTF-8 dekodierter String
-        """
-        return data.decode("utf-8")
-
-            
+    
     def encrypt(self, data):
         """
         Verschluesselt die Daten fuer ein Paket.
@@ -220,9 +237,12 @@ class ConnectionHandler:
 
         @return: Verschluesselt Datenpaket ohne Kopfinformationen
         """
-        sid = self.header[2]
-        return self.crypt.encrypt(self.sesskey[sid], self.ctr[sid], data)
-
+        try:
+            sid = self.header[2]
+            #return self.crypt.encrypt(self.sesskey[sid], self.ctr[sid], data)
+            return data
+        except IndexError:
+            return None
 
             
     def parse_header(self, data):
@@ -234,10 +254,14 @@ class ConnectionHandler:
 
         @return: Array - Kopfinformationen
         """
-        header = split(":", data, 2)
-        if not header[0] == "dhex":
-            header[2] = int(header[2])
-        return header
+
+        try:
+            header = split(":", data, 2)
+            if not header[0] == "dhex":
+                header[2] = int(header[2])
+            return header
+        except IndexError:
+            pass
         
 
 
@@ -250,9 +274,16 @@ class ConnectionHandler:
 
         @return: str - Nachrichtenpaket mit Kopfinformationen
         """
-        package = "none" + ":" + "12.12.12" + ":" + str(self.header[2]) + ";"
-        package += self.encrypt(msg)
-        return package
+
+        try:
+            package = "sresp" + ":" + str(self.header[2]) + ";"
+            enc_msg = self.encrypt(msg)
+            if enc_msg == None:
+                return msg
+            package += enc_msg
+            return package
+        except IndexError:
+            return msg
 
 
 
@@ -268,18 +299,20 @@ class ConnectionHandler:
         cred = split(":", data, 1)
         if len(cred) < 2:
             return "error - not-enough-arguments - AUTH"
+        try:
+            if self.database.auth_user(cred[0], cred[1]) == True:
 
-        if self.database.auth_user(cred[0], cred[1]) == True:
+                # User-ID String erzeugen
+                dig = self.crypt.get_hash(self.sesskey[self.header[2]] + str(cred[0])) 
 
-            # User-ID String erzeugen
-            dig = self.crypt.get_hash(self.sesskey[self.header[2]] + cred[0])
+                self.uidstrings[self.header[2]] = dig
+                self.users[self.header[2]] = self.database.get_user_id(cred[0])
 
-            self.uidstrings[self.header[2]] = dig
-            self.users[self.header[2]] = self.database.get_user_id(cred[0])
-
-            return dig
-        else:
-            return "error - wrong-credentials - AUTH"
+                return dig
+            else:
+                return "error - wrong-credentials - AUTH"
+        except IndexError:
+            return "error - invalid-header - AUTH"
 
 
 
@@ -295,9 +328,13 @@ class ConnectionHandler:
 
         @return: Boolean - Ergebnis
         """
-        if self.uidstrings[index] == string:
-            return True
-        return False
+
+        try:
+            if self.uidstrings[index] == string:
+                return True
+            return False
+        except IndexError:
+            return False
 
 
         
@@ -310,22 +347,27 @@ class ConnectionHandler:
 
         @return: str - Erfolgs-/Fehlermeldung
         """
-        sid = self.header[2]
-        tmp = split(":", data, 2)
 
-        # Nicht alle Felder gegeben
-        if len(tmp) != 3:
-            return "error - not-long-enough - MESG"
+        try:
+            sid = self.header[2]
+            tmp = split(":", data, 2)
 
-        if self.check_uidstring(sid, tmp[0]):
-            rcv_uid = self.database.get_user_id(tmp[1])
-            snd_uid = self.users[self.header[2]]
-            print "writing message:" + tmp[2]
-            if not self.database.rcv_message(snd_uid, rcv_uid, tmp[2]):
-                return "error - server-application-error - MESG"
-            return "success - MESG"
-        else:
-            return "error - wrong-uidstring - MESG"
+
+            # Nicht alle Felder gegeben
+            if len(tmp) != 3:
+                return "error - not-long-enough - MSG"
+
+            if self.check_uidstring(sid, tmp[0]):
+                rcv_uid = self.database.get_user_id(tmp[1])
+                snd_uid = self.users[self.header[2]]
+                print "writing message:" + tmp[2]
+                if not self.database.rcv_message(snd_uid, rcv_uid, tmp[2]):
+                    return "error - server-database-error - MSG"
+                return "success - MSG"
+            else:
+                return "error - wrong-uidstring - MSG"
+        except IndexError:
+            return "error - invalid-header - MSG"
 
 
 
@@ -339,19 +381,28 @@ class ConnectionHandler:
         @return: Array - Nachrichten
         """
 
-        messages = self.database.get_messages_by_last_mid(self.header[2], data)
-        ret_msg = []
+        data = split(":", data, 2)
 
-        for item in messages:
-            username = self.database.get_user_by_id(item[0])
+        try:
 
-            if username == None:
-                username = "Nutzer unbekannt"
+            if not self.check_uidstring(self.header[2], data[0]):
+              #  print "wrong uid string :" + data[0]
+                return "error - wrong-credentials - GetMessage"
 
-            ret_msg.append(username + ":" + item[1])
+            messages = self.database.get_messages_by_last_mid(self.header[2], data[1])
+            ret_msg = []
 
-        ret_msg.append("[FIN]")
-        return ret_msg
+            for item in messages:
+                username = self.database.get_user_by_id(item[0])
+
+                if (username == None) or (item[0] == "False"):
+                    username = "Nutzer unbekannt"
+
+                ret_msg.append((username, item[1]))
+
+            return ret_msg
+        except IndexError:
+            return "error - internal-database-request-error - MSG"
 
 
 
@@ -365,19 +416,28 @@ class ConnectionHandler:
         @return: Array - Nachrichten
         """
 
-        messages = self.database.get_messages_by_last_gid(self.header[2], data)
-        ret_msg = []
+        data = split(":", data, 2)
 
-        for item in messages:
-            groupname = self.database.get_group_by_id(item[0])
+        try:
 
-            if groupname == None:
-                groupname = "Gruppenname unbekannt"
+            if not self.check_uidstring(self.header[2], data[0]):
+                print "wrong uid string"
+                return "error - wrong-credentials - GetGroupMessage"
 
-            ret_msg.append(groupname + ":" + item[1])
+            messages = self.database.get_messages_by_last_gid(self.header[2], data[1])
+            ret_msg = []
 
-        ret_msg.append("[FIN]")
-        return ret_msg
+            for item in messages:
+                groupname = self.database.get_group_by_id(item[0])
+
+                if groupname == None:
+                    groupname = "Gruppenname unbekannt"
+
+                ret_msg.append(item[1] + ":" + groupname + ":" + item[2])
+
+            return ret_msg
+        except IndexError:
+            return "error - internal-database-request-error - GroupMessage"
 
 
 
@@ -390,22 +450,43 @@ class ConnectionHandler:
 
         @return: str - Erfolgs-/Fehlermeldung
         """
-        sid = self.header[2]
-        tmp = split(":", data, 2)
 
-        # Nicht alle Felder gegeben
-        if len(tmp) != 3:
-            return "error - not-enough-arguments - BRDC"
+        try:
+            sid = self.header[2]
+            tmp = split(":", data, 2)
 
-        if self.check_uidstring(sid, tmp[0]):
-            rcv_gid = self.database.get_group_id(tmp[1])
-            snd_uid = self.users[self.header[2]]
-            print "writing message:" + tmp[2]
-            if not self.database.rcv_brdc_message(snd_uid, rcv_gid, tmp[2]):
-                return "error - server-application-error - BRDC"
-            return "success - BRDC"
+            # Nicht alle Felder gegeben
+            if len(tmp) != 3:
+                return "error - not-enough-arguments - GroupMessage"
+
+            if self.check_uidstring(sid, tmp[0]):
+                rcv_gid = self.database.get_group_id(tmp[1])
+                snd_uid = self.users[self.header[2]]
+                print "writing group message:" + tmp[2]
+                if not self.database.rcv_brdc_message(snd_uid, rcv_gid, tmp[2]):
+                    return "error - server-database-error - GroupMessage"
+                return "success - GroupMessage"
+            else:
+                print "error in uidstring"
+                return "error - wrong-uidstring - GroupMessage"
+        except IndexError:
+            return "error - invalid-header - GroupMessage"
+
+
+    def request_file(self):
+        """
+        Gibt einen Dateistring fuer eine neue Datei zurueck, die ueber FTP hochgeladen werden kann
+
+        @return: str - Dateistring
+        """
+
+        ret_value = self.generate_file_string()
+
+        if ret_value == None:
+            return "error - storage-full - REQFILE"
         else:
-            return "error - wrong-uidstring - BRDC"
+            self.database.add_file(ret_value)
+            return ret_value
 
 
 
@@ -428,28 +509,14 @@ class ConnectionHandler:
 
         if not self.database.check_filestring(filestring):
             return "error - wrong-filestring"
+        try:
+            if not self.database.register_file(self.users[self.header[2]], global_name, filestring):
+                return "error - server-storage-error"
+            else:
+                return "success - FILE"
+        except IndexError:
+            return "error - invalid-header - FILE"
 
-        if not self.database.register_file(self.users[self.header[2]], global_name, filestring):
-            return "error - server-storage-error"
-        else:
-            return "soccess - FILE"
-
-
-
-    def create_file(self, path):
-        """
-        Erzeugt eine Datei.
-
-        @param path: Dateipfad
-        @type pyth: string
-        @retun: Boolean Erfolg
-        """
-
-        f = open(path, 'w')
-        f.write('')
-        f.close()
-
-        return True
 
 
     def generate_file_string(self):
@@ -464,11 +531,9 @@ class ConnectionHandler:
             for i in range(0, 10):
                 filestring = filestring + choice(string.ascii_letters)
 
-            if os.path.exists(filestring):
+            if os.path.exists(self.storage_string + filestring):
                 break
             else:
-                storage_string = self.file_storage + filestring
-                self.create_file(storage_string)
                 return filestring
 
         return None

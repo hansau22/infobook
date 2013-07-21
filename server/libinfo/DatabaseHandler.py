@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from libinfo.Pool import Pool
 
 import sqlite3
@@ -20,6 +22,7 @@ class DatabaseHandler:
         @return: None
         """
         self.db = sqlite3.connect(database)
+        self.db.text_factory = str
         self.cursor = self.db.cursor()
         self.init_db()
         self.mid_Pool = Pool(0, self.get_start_mid())
@@ -35,10 +38,10 @@ class DatabaseHandler:
         @return: None
         """
         self.cursor.execute("CREATE TABLE IF NOT EXISTS users(uid INTEGER, username TEXT, password TEXT)")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS groups(gid Integer, member Integer, name Text)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS groups(gid INTEGER, member INTEGER, name Text)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS messages(mid INTEGER, uidsender INTEGER, uidreceiver INTEGER, content TEXT)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS groupmessages(bid INTEGER, uidsender INTEGER, gidreceiver INTEGER, content TEXT)")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS files(fid Integer, localname Text, globalname Text, owner Integer)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS files(fid INTEGER, localname Text, globalname Text, owner INTEGER)")
         self.db.commit()
 
         self.cursor.execute("SELECT uid FROM users WHERE uid = 0")
@@ -77,8 +80,9 @@ class DatabaseHandler:
         @param pwhash: SHA256-Verschluesselter Passwort-Hash
         @type pwhash: str
 
-        @return: None
+        @return: None, False wenn Parameter nicht stimmen
         """
+
         self.cursor.execute("INSERT INTO users VALUES(?, ?, ?)", (uid, username, pwhash))
         self.db.commit()
 
@@ -94,9 +98,10 @@ class DatabaseHandler:
         @param pwhash: SHA256-Verschluesselter Passwort-Hash
         @type pwhash: str
 
-        @return: None
+        @return: True, False wenn Parameter nicht stimmen oder Nutzer-Passwort Kombination falsch
         """ 
-        self.cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, pwhash))
+
+        self.cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (str(username), str(pwhash)))
         if self.cursor.fetchone() != None:
             return True
         return False
@@ -110,13 +115,15 @@ class DatabaseHandler:
         @param username: Nutzername
         @type username: str
 
-        @return: str Nutzer-ID, False bei unbekanntem Nutzer
+        @return: int Nutzer-ID, False bei unbekanntem Nutzer
         """
-        self.cursor.execute("SELECT * FROM users WHERE username=?", [username])
+
+
+        self.cursor.execute("SELECT uid FROM users WHERE username=?", [username])
         result = self.cursor.fetchone()
         if result == None:
             return False
-        return result[0]
+        return int(result[0])
 
 
     def get_group_id(self, name):
@@ -126,13 +133,14 @@ class DatabaseHandler:
         @param name: Gruppenname
         @type name: str
 
-        @return: str Gruppen-ID, False bei unbekannter Gruppe
+        @return: int Gruppen-ID, False bei unbekannter Gruppe
         """
-        self.cursor.execute("SELECT * FROM groups WHERE name=?", [name])
+
+        self.cursor.execute("SELECT gid FROM groups WHERE name=?", [name])
         result = self.cursor.fetchone()
         if result == None:
             return False
-        return result[0]
+        return int(result[0])
 
 
     def get_user_by_id(self, id):
@@ -142,25 +150,25 @@ class DatabaseHandler:
         @param id: Nutzer-ID
         @type id: int
 
-        @return: str Name - None falls Name nicht gefunden
+        @return: str Name, None falls Name nicht gefunden
         """
 
-        self.cursor.execute("SELECT username FROM users WHERE uid = ?", str(id))
+        self.cursor.execute("SELECT username FROM users WHERE uid=?", str(id))
         return self.cursor.fetchone()
 
 
 
-    def get_group_by_id(self, id):
+    def get_group_by_id(self, gid):
         """
         Gibt den Namen einer Gruppe anhand der ID zurueck.
 
-        @param id: Gruppen-ID
-        @type id: int
+        @param gid: Gruppen-ID
+        @type gid: int
 
         @return: str Name - None falls Name nicht gefunden
         """
 
-        self.cursor.execute("SELECT name FROM groups WHERE gid = ?", str(id))
+        self.cursor.execute("SELECT name FROM groups WHERE gid=?", gid)
         return self.cursor.fetchone()
 
         
@@ -179,16 +187,14 @@ class DatabaseHandler:
 
         @return: Boolean Erfolg
         """
-        #if not isinstance(uidSender, int): return False
-        #if not isinstance(data, str): return False
-        
-        # Wiederholen, wenn uidReceiver eine Liste ist
-        data = unicode(data)
+
+        data = data.strip()
+
         if not isinstance(uidReceiver, list):
-            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, uidReceiver, data))
+            self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, uidReceiver, data.encode("utf-8", "ignore")))
         else:
             for item in uidReceiver:
-                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, item, data))
+                self.cursor.execute("INSERT INTO messages VALUES(?, ?, ?, ?)", (self.mid_Pool.give_next(), uidSender, item, data.encode("utf-8", "ignore")))
         
         self.db.commit()
         return True
@@ -209,7 +215,7 @@ class DatabaseHandler:
         @return Array - [Sender(str), Nachrichten(str)]
         """
 
-        self.cursor.execute("SELECT uidSender, content FROM messages WHERE MID > ?", str(last_mid))
+        self.cursor.execute("SELECT uidSender, content FROM messages WHERE MID > ?", [last_mid])
         
         ret_value = []
         result = self.cursor.fetchone()
@@ -221,7 +227,8 @@ class DatabaseHandler:
 
 
 
-    def get_messages_by_last_gid(self, uidReceiver, last_gid):
+
+    def get_messages_by_last_group_id(self, uidReceiver, last_gid):
         """
         Sendet dem Client die neuen Gruppennachrichten.
         Alle Gruppennachrichten sind neu, wenn sie eine groessere GID als die uebergebene hat.
@@ -235,7 +242,7 @@ class DatabaseHandler:
         @return Array - [Sender(str), Gruppennachrichten(str)]
         """
 
-        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE mid > ?", str(last_gid))
+        self.cursor.execute("SELECT gidreceiver, uidsender, content FROM groupmessages WHERE bid > ?", last_gid)
 
         ret_value = []
         result = self.cursor.fetchone()
@@ -262,10 +269,6 @@ class DatabaseHandler:
 
             @return: Boolean Erfolg
             """
-            if not isinstance(uidSender, int): return False
-            if not isinstance(gidReceiver, int): return False
-            if not isinstance(data, str): return False
-            
             self.cursor.execute("INSERT INTO groupmessages VALUES(?, ?, ?, ?)", (self.bid_Pool.give_next(), uidSender, gidReceiver, data))
             self.db.commit()
             return True
@@ -282,7 +285,7 @@ class DatabaseHandler:
         @return: Boolean Erfolg
         """
 
-        self.cursor.execute("INSERT INTO files VALUES(?, ?, ?, ?)", (self.fid_Pool.give_next(), local_name, "", "0"))
+        self.cursor.execute("INSERT INTO files VALUES(?, ?, ?, ?)", (self.fid_Pool.give_next(), local_name, "", 0))
         self.db.commit()
         return True
 
