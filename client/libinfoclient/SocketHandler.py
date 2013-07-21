@@ -528,11 +528,11 @@ class SocketHandler:
 		"""
 
 		try:		
-			shutil.copyfile(localfile, filestring)
+			shutil.copyfile(localfile, "./tmp/" + filestring)
 			ftp = ftplib.FTP("127.0.0.1")
 			ftp.login("ftp-user", "test")
 
-			f = open(filestring, "r")
+			f = open("./tmp/" + filestring, "r")
 
 			#ftp.cwd("pub")
 
