@@ -14,6 +14,7 @@ libinfo.ConnectionHandler.init_dh	libinfo.ConnectionHandler-class.html#init_dh
 libinfo.ConnectionHandler.request_file	libinfo.ConnectionHandler-class.html#request_file
 libinfo.ConnectionHandler.auth_user	libinfo.ConnectionHandler-class.html#auth_user
 libinfo.ConnectionHandler.parse_header	libinfo.ConnectionHandler-class.html#parse_header
+libinfo.ConnectionHandler.get_globalname	libinfo.ConnectionHandler-class.html#get_globalname
 libinfo.ConnectionHandler.generate_file_string	libinfo.ConnectionHandler-class.html#generate_file_string
 libinfo.DatabaseHandler	libinfo.DatabaseHandler-class.html
 libinfo.DatabaseHandler.register_file	libinfo.DatabaseHandler-class.html#register_file
@@ -31,6 +32,7 @@ libinfo.DatabaseHandler.get_start_brdc_mid	libinfo.DatabaseHandler-class.html#ge
 libinfo.DatabaseHandler.auth_user	libinfo.DatabaseHandler-class.html#auth_user
 libinfo.DatabaseHandler.init_db	libinfo.DatabaseHandler-class.html#init_db
 libinfo.DatabaseHandler.get_user_id	libinfo.DatabaseHandler-class.html#get_user_id
+libinfo.DatabaseHandler.get_name_by_filestring	libinfo.DatabaseHandler-class.html#get_name_by_filestring
 libinfo.DatabaseHandler.get_group_by_id	libinfo.DatabaseHandler-class.html#get_group_by_id
 libinfo.DatabaseHandler.get_user_by_id	libinfo.DatabaseHandler-class.html#get_user_by_id
 libinfo.DatabaseHandler.__init__	libinfo.DatabaseHandler-class.html#__init__
@@ -53,9 +55,13 @@ libinfoclient.SocketHandler.write_group_message	libinfoclient.SocketHandler-clas
 libinfoclient.SocketHandler.write_loginfile	libinfoclient.SocketHandler-class.html#write_loginfile
 libinfoclient.SocketHandler.get_group_messages	libinfoclient.SocketHandler-class.html#get_group_messages
 libinfoclient.SocketHandler.send	libinfoclient.SocketHandler-class.html#send
+libinfoclient.SocketHandler.get_globalname	libinfoclient.SocketHandler-class.html#get_globalname
 libinfoclient.SocketHandler.write_message	libinfoclient.SocketHandler-class.html#write_message
 libinfoclient.SocketHandler.auth	libinfoclient.SocketHandler-class.html#auth
 libinfoclient.SocketHandler.parse_error	libinfoclient.SocketHandler-class.html#parse_error
+libinfoclient.SocketHandler.request_file	libinfoclient.SocketHandler-class.html#request_file
 libinfoclient.SocketHandler.get_sesskey	libinfoclient.SocketHandler-class.html#get_sesskey
-libinfoclient.SocketHandler.__init__	libinfoclient.SocketHandler-class.html#__init__
 libinfoclient.SocketHandler.get_messages	libinfoclient.SocketHandler-class.html#get_messages
+libinfoclient.SocketHandler.get_file	libinfoclient.SocketHandler-class.html#get_file
+libinfoclient.SocketHandler.__init__	libinfoclient.SocketHandler-class.html#__init__
+libinfoclient.SocketHandler.upload_file	libinfoclient.SocketHandler-class.html#upload_file
