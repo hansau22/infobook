@@ -29,7 +29,6 @@ hashengine = SHA256.new()
 
 
 
-
 if exists("login.dat") == True:
     plain_read = open('login.dat', 'r').read()
     plain_list = plain_read.split('\n')
@@ -134,8 +133,12 @@ cipher = AES.new(sesskey, AES.MODE_CTR, counter=ctr)
 #else:
 
 
+<<<<<<< HEAD:client.py
+#plain = "meop:8b2d38b789e90bb18567c2be4abbd4295f461f6453dd0447a3bf248a75eb0ae7"
+=======
 plain = "test:8b2d38b789e90bb18567c2be4abbd4295f461f6453dd0447a3bf248a75eb0ae7"
 plain = plain.encode("utf-8")
+>>>>>>> 0621d07b145f401a3f9eeaab58be12a2aa8a8de9:client/client.py
 msg = ""
 msg += "auth" + ":"
 msg += "12.12.12" + ":"
