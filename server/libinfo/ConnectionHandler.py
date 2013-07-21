@@ -82,7 +82,9 @@ class ConnectionHandler:
                 # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
                 if self.crypt.is_encrypted(data):
                     #body = self.decrypt(data)
-                    body = data
+
+                    tmp = split(";", data, 1)
+                    body = tmp[1]
                     print "getting messages :" + body
 
                     # Wenn nicht entschluesselbar -> Fehler
