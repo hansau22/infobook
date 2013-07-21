@@ -123,7 +123,7 @@ class SocketHandler:
 				ret_data = ret_data[1]
 				#ret_data = self.crypt.decrypt(self.sesskey, self.counter, ret_data)
 
-				if "get" in type_of_package:
+				if ("get" in type_of_package) and not type_of_package == "getfile":
 					try:
 						ret_data = json.loads(ret_data)
 
@@ -493,18 +493,21 @@ class SocketHandler:
 		@return: Boolean Erfolg
 		"""
 
-		ftp = ftplib.FTP("ftp://localhost")
-		ftp.login("anonymous", "anonymous")
+		ftp = ftplib.FTP("127.0.0.1")
+		ftp.login("ftp-user", "test")
 
 		f = open("./data/" + filestring, "wr")
+		data = ""
 
-		ftp.retrbinary("RETR " + filestring,  f)
+		ftp.retrbinary("RETR " + filestring, f.write)
+		f.write(data)
 		ftp.quit()
 		f.close()
 
 		name = self.get_globalname(filestring)
+		print name
 		if name:
-			os.rename(filestring, name)
+			os.rename("./data/" + filestring, "./data/" + name)
 			return True
 		else:
 			return False
@@ -524,12 +527,14 @@ class SocketHandler:
 		@return: Boolean Erfolg
 		"""
 
-		try:
+		try:		
 			shutil.copyfile(localfile, filestring)
-			ftp = ftplib.FTP("ftp://localhost")
-			ftp.login("anonymous", "anonymous")
+			ftp = ftplib.FTP("127.0.0.1")
+			ftp.login("ftp-user", "test")
 
 			f = open(filestring, "r")
+
+			#ftp.cwd("pub")
 
 			ftp.storbinary("STOR " + filestring, f)
 			f.close()
@@ -539,6 +544,7 @@ class SocketHandler:
 			msg += localname
 
 			ret = self.send(msg, "regfile")
+			print ret
 
 			error = self.parse_error(ret)
 
@@ -547,6 +553,6 @@ class SocketHandler:
 			return False
 
 		except ftplib.all_errors as error:
-			raise error
+			raise RuntimeError(error)
 			return False
 

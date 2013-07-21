@@ -323,7 +323,7 @@ class DatabaseHandler:
         @return Boolean Erfolg
         """
 
-        self.cursor.execute("SELECT localname FROM files WHERE localname = ?", filestring)
+        self.cursor.execute("SELECT localname FROM files WHERE localname = ?", [filestring])
         if self.cursor.fetchone() != None:
             return True
         return False
@@ -340,11 +340,14 @@ class DatabaseHandler:
         @return: str Dateiname
         """
 
-        self.cursor.execute("SELECT globalname FROM files WHERE localname = ?", name)
+        self.cursor.execute("SELECT globalname FROM files WHERE localname = ?", [name])
         result = self.cursor.fetchone()
 
         if result != None:
-            return result
+            try:
+                return result[0]
+            except IndexError:
+                return result
         return False 
 
 

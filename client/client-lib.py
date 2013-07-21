@@ -58,7 +58,10 @@ if not so.auth(None, None, True):
 filestring = so.request_file()
 print filestring
 if filestring:
-	if not so.upload_file(filestring, "/home/julian/asdf", "asdf"):
-		print "error in file sending"
-	else:
-		print "file send successfully"
+	try:
+		ret = so.upload_file(filestring, "/home/julian/asdf", "asdf")
+		ret = so.get_file(filestring)
+		if not ret:
+			print "file receiving worked"
+	except RuntimeError as error:
+		print error

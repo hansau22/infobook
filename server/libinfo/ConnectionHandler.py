@@ -85,7 +85,7 @@ class ConnectionHandler:
 
                     tmp = split(";", data, 1)
                     body = tmp[1]
-                    print "getting messages :" + body
+                    #print "getting messages :" + body
 
                     # Wenn nicht entschluesselbar -> Fehler
                     if body == None:
@@ -504,17 +504,20 @@ class ConnectionHandler:
 
         @return: str - Erfolgs-/Fehlermeldung
         """
-        values = split(data, ":", 2)
-        if len(values) < 2:
-            return "error - file"
+        values = split(":", data, 2)
+        print  values
+    
+        try: 
+               
 
-        filestring = values[0]
-        global_name = values[1]
-        del values
+            filestring = values[0]
+            global_name = values[1]
+            del values
 
-        if not self.database.check_filestring(filestring):
-            return "error - wrong-filestring"
-        try:
+
+            if not self.database.check_filestring(filestring):
+                return "error - wrong-filestring"
+
             if not self.database.register_file(self.users[self.header[2]], global_name, filestring):
                 return "error - server-storage-error"
             else:
@@ -533,7 +536,7 @@ class ConnectionHandler:
         @return: str - filestring / str - error
         """
 
-        filestring = self.database.get_filestring_by_name(data)
+        filestring = self.database.get_name_by_filestring(data)
 
         if not filestring:
             return "error - file-not-found - FILE"
