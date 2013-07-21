@@ -329,6 +329,25 @@ class DatabaseHandler:
         return False
 
 
+
+    def get_name_by_filestring(self, name):
+        """
+        Sucht den Dateinamen anhand des Dateistrings 
+
+        @param name: String der Datei
+        @type name: str
+
+        @return: str Dateiname
+        """
+
+        self.cursor.execute("SELECT globalname FROM files WHERE localname = ?", name)
+        result = self.cursor.fetchone()
+
+        if result != None:
+            return result
+        return False 
+
+
     
     def get_start_mid(self):
         """

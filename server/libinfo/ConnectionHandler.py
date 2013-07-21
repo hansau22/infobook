@@ -123,6 +123,8 @@ class ConnectionHandler:
                         resp = self.request_file()
                     elif self.header[0] == "regfile":
                         resp = self.register_file(body)
+                    elif self.header[0] == "getfile":
+                        resp = self.get_globalname(body)
 
 
                     # Antwortpaket senden
@@ -517,6 +519,22 @@ class ConnectionHandler:
         except IndexError:
             return "error - invalid-header - FILE"
 
+
+    def get_globalname(self, data):
+        """
+        Sucht eine Datei nach dem Dateinamen und gibt den filestring zuruekc
+
+        @param data: Datenpaket des Clients ohne Kopfinformationen
+        @type data: str
+
+        @return: str - filestring / str - error
+        """
+
+        filestring = self.database.get_filestring_by_name(data)
+
+        if not filestring:
+            return "error - file-not-found - FILE"
+        return filestring
 
 
     def generate_file_string(self):

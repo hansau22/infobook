@@ -46,9 +46,18 @@ counter = 0
 # 			print unicode(item[0]) + ":" + unicode(item[1])
 # 			exit()
 
-while counter < 5:
-	print so.write_group_message("moep", str(datetime.time(datetime.now())))
-	time.sleep(3)
-	print so.get_messages("1")
-	time.sleep(3)
-	counter += 1
+# while counter < 5:
+# 	print so.write_group_message("moep", str(datetime.time(datetime.now())))
+# 	time.sleep(3)
+# 	print so.get_messages("1")
+# 	time.sleep(3)
+# 	counter += 1
+
+
+
+filestring = so.request_file()
+if filestring:
+	if not so.upload_file(filestring, "/home/julian/asdf", "asdf"):
+		print "error in file sending"
+	else:
+		print "file send successfully"
