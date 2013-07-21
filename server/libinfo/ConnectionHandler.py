@@ -552,7 +552,7 @@ class ConnectionHandler:
             for i in range(0, 10):
                 filestring = filestring + choice(string.ascii_letters)
 
-            if os.path.exists(self.storage_string + filestring):
+            if os.path.exists(self.file_storage + filestring):
                 break
             else:
                 return filestring
