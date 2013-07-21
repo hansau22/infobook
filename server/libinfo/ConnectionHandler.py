@@ -128,6 +128,8 @@ class ConnectionHandler:
                         resp = self.register_file(body)
                     elif self.header[0] == "getfile":
                         resp = self.get_globalname(body)
+                    elif self.header[0] == "getpic":
+                        resp = self.get_profile_pic(body)
 
 
                     # Antwortpaket senden
@@ -561,4 +563,22 @@ class ConnectionHandler:
                 return filestring
 
         return None
+
+
+
+    def get_profile_pic(self, data):
+        """
+        Gibt dem Nutzer den String zum Profilfoto zurueck
+
+        @param data: Datenpaket des Clients ohne Kopfinformationen
+        @type data: str
+
+        @return: str - Dateistring zum Profilbild
+        """
+
+        string = self.database.get_profile_pic(data)
+
+        if not string:
+            return "-"
+        return string
 

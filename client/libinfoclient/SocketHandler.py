@@ -556,3 +556,28 @@ class SocketHandler:
 			raise RuntimeError(error)
 			return False
 
+
+	def get_profile_pic(self, username):
+		"""
+		Speichert das Profilbild fuer einen Nutzer
+
+		@param username: Nutzername
+		@type username: str
+
+		@return: None
+		"""
+
+		ret = self.send(username, "getpic")
+
+		error = self.parse_error(ret)
+
+		if not error:
+			ret = self.get_file(ret)
+			error = self.parse_error(ret)
+			if not error:
+				shutil.copyfile("./data/" + username + ".jpg", "./pic/" + username + ".jpg")
+				return None
+		
+		shutil.copyfile("./pic/default.jpg", "./pic/" + username + ".jpg")
+
+
