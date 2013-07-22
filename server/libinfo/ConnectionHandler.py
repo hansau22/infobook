@@ -81,8 +81,16 @@ class ConnectionHandler:
 
                 # Datenpaket ist verschluesslt (= Kein DHEX-Paket)    
                 if self.crypt.is_encrypted(data):
+<<<<<<< HEAD
                     body = self.decrypt(data)
                     print "getting messages: " + body
+=======
+                    #body = self.decrypt(data)
+
+                    tmp = split(";", data, 1)
+                    body = tmp[1]
+                    #print "getting messages :" + body
+>>>>>>> 22579fda2480246732d555661f0e4347a3495682
 
                     # Wenn nicht entschluesselbar -> Fehler
                     if body == None:
@@ -123,6 +131,10 @@ class ConnectionHandler:
                         resp = self.request_file()
                     elif self.header[0] == "regfile":
                         resp = self.register_file(body)
+                    elif self.header[0] == "getfile":
+                        resp = self.get_globalname(body)
+                    elif self.header[0] == "getpic":
+                        resp = self.get_profile_pic(body)
 
 
                     # Antwortpaket senden
@@ -277,10 +289,10 @@ class ConnectionHandler:
 
         try:
             package = "sresp" + ":" + str(self.header[2]) + ";"
-            enc_msg = self.encrypt(msg)
-            if enc_msg == None:
-                return msg
-            package += enc_msg
+            #enc_msg = self.encrypt(msg)
+            #if enc_msg == None:
+            #    return msg
+            package += msg
             return package
         except IndexError:
             return msg
@@ -499,17 +511,20 @@ class ConnectionHandler:
 
         @return: str - Erfolgs-/Fehlermeldung
         """
-        values = split(data, ":", 2)
-        if len(values) < 2:
-            return "error - file"
+        values = split(":", data, 2)
+        print  values
+    
+        try: 
+               
 
-        filestring = values[0]
-        global_name = values[1]
-        del values
+            filestring = values[0]
+            global_name = values[1]
+            del values
 
-        if not self.database.check_filestring(filestring):
-            return "error - wrong-filestring"
-        try:
+
+            if not self.database.check_filestring(filestring):
+                return "error - wrong-filestring"
+
             if not self.database.register_file(self.users[self.header[2]], global_name, filestring):
                 return "error - server-storage-error"
             else:
@@ -517,6 +532,22 @@ class ConnectionHandler:
         except IndexError:
             return "error - invalid-header - FILE"
 
+
+    def get_globalname(self, data):
+        """
+        Sucht eine Datei nach dem Dateinamen und gibt den filestring zuruekc
+
+        @param data: Datenpaket des Clients ohne Kopfinformationen
+        @type data: str
+
+        @return: str - filestring / str - error
+        """
+
+        filestring = self.database.get_name_by_filestring(data)
+
+        if not filestring:
+            return "error - file-not-found - FILE"
+        return filestring
 
 
     def generate_file_string(self):
@@ -531,10 +562,28 @@ class ConnectionHandler:
             for i in range(0, 10):
                 filestring = filestring + choice(string.ascii_letters)
 
-            if os.path.exists(self.storage_string + filestring):
+            if os.path.exists(self.file_storage + filestring):
                 break
             else:
                 return filestring
 
         return None
+
+
+
+    def get_profile_pic(self, data):
+        """
+        Gibt dem Nutzer den String zum Profilfoto zurueck
+
+        @param data: Datenpaket des Clients ohne Kopfinformationen
+        @type data: str
+
+        @return: str - Dateistring zum Profilbild
+        """
+
+        string = self.database.get_profile_pic(data)
+
+        if not string:
+            return "-"
+        return string
 

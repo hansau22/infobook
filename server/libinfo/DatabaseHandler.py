@@ -37,7 +37,7 @@ class DatabaseHandler:
 
         @return: None
         """
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS users(uid INTEGER, username TEXT, password TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS users(uid INTEGER, username TEXT, password TEXT, profilepic TEXT)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS groups(gid INTEGER, member INTEGER, name Text)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS messages(mid INTEGER, uidsender INTEGER, uidreceiver INTEGER, content TEXT)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS groupmessages(bid INTEGER, uidsender INTEGER, gidreceiver INTEGER, content TEXT)")
@@ -46,7 +46,7 @@ class DatabaseHandler:
 
         self.cursor.execute("SELECT uid FROM users WHERE uid = 0")
         if self.cursor.fetchone() == None:
-            self.cursor.execute("INSERT INTO users VALUES(0, 'initial', 'nohash')")
+            self.cursor.execute("INSERT INTO users VALUES(0, 'initial', 'nohash', 'none')")
 
         self.cursor.execute("SELECT fid FROM files WHERE fid = 0")
         if self.cursor.fetchone() == None:
@@ -323,10 +323,50 @@ class DatabaseHandler:
         @return Boolean Erfolg
         """
 
-        self.cursor.execute("SELECT localname FROM files WHERE localname = ?", filestring)
+        self.cursor.execute("SELECT localname FROM files WHERE localname = ?", [filestring])
         if self.cursor.fetchone() != None:
             return True
         return False
+
+
+
+    def get_name_by_filestring(self, name):
+        """
+        Sucht den Dateinamen anhand des Dateistrings 
+
+        @param name: String der Datei
+        @type name: str
+
+        @return: str Dateiname
+        """
+
+        self.cursor.execute("SELECT globalname FROM files WHERE localname = ?", [name])
+        result = self.cursor.fetchone()
+
+        if result != None:
+            try:
+                return result[0]
+            except IndexError:
+                return result
+        return False 
+
+
+
+    def get_profile_pic(self, uid):
+        """
+        Gibt den Dateistring zu einem Nutzer zurueck
+
+        @param uid: Nutzer ID
+        @type uid: int
+
+        @return: str - Filestring, False falls kein String bekannt
+        """
+
+        self.cursor.execute("SELECT profilepic FROM users WHERE uid=?", [uid])
+        result = self.cursor.fetchone()
+        if result == "None":
+            return False
+        return result
 
 
     

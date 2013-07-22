@@ -14,6 +14,10 @@ import simplejson as json
 from Crypto.Util import Counter as Counter
 from Crypto.Cipher import AES as AES
 
+import ftplib
+import os
+import shutil
+
 class SocketHandler:
 
 	def __init__(self, server, port):
@@ -82,8 +86,8 @@ class SocketHandler:
 
 
 			data = data.encode("utf-8")
-			msg += self.crypt.encrypt(self.sesskey, self.counter, data)
-#			msg += data
+			#msg += self.crypt.encrypt(self.sesskey, self.counter, data)
+			msg += data
 
 		else:
 			msg += data
@@ -119,7 +123,7 @@ class SocketHandler:
 				ret_data = ret_data[1]
 				#ret_data = self.crypt.decrypt(self.sesskey, self.counter, ret_data)
 
-				if "get" in type_of_package:
+				if ("get" in type_of_package) and not type_of_package == "getfile":
 					try:
 						ret_data = json.loads(ret_data)
 
@@ -437,4 +441,116 @@ class SocketHandler:
 		loginfile.write(data)
 		loginfile.close() 
 
+
+
+	def request_file(self):
+		"""
+		Beantragt einen neuen Dateiupload
+
+		@return Dateiname
+		"""
+
+		ret = self.send("", "reqfile")
+
+		error = self.parse_error(ret)
+		if not error:
+				return ret
+		else:
+			raise RuntimeError(error)
+			return False
+
+
+	def get_globalname(self, filestring):
+		"""
+		Findet den Dateinamen der Datei heraus
+
+		@param filestring: Dateistring
+		@type filestring: str
+
+		@return: str - globalname
+		"""
+
+		ret = self.send(filestring, "getfile")
+
+		error = self.parse_error(ret)
+		if not error:
+				return ret
+		else:
+			raise RuntimeError(error)
+			return False
+
+
+
+	def get_file(self, filestring):
+		"""
+		Laedt eine Datei von dem Server herunter
+
+		@param filestring: Dateistring auf dem server
+		@type filestring: str
+
+		@return: Boolean Erfolg
+		"""
+
+		ftp = ftplib.FTP("127.0.0.1")
+		ftp.login("ftp-user", "test")
+
+		f = open("./data/" + filestring, "wr")
+		data = ""
+
+		ftp.retrbinary("RETR " + filestring, f.write)
+		f.write(data)
+		ftp.quit()
+		f.close()
+
+		name = self.get_globalname(filestring)
+		print name
+		if name:
+			os.rename("./data/" + filestring, "./data/" + name)
+			return True
+		else:
+			return False
+
+
+
+	def upload_file(self, filestring, localfile, localname):
+		"""
+		Laedt eine Datei auf den Server hoch
+
+		@param filestring: Dateistring auf dem Server
+		@type filestring: str
+
+		@param localfile: Lokale Datei
+		@type localfile: str
+
+		@return: Boolean Erfolg
+		"""
+
+		try:		
+			shutil.copyfile(localfile, "./tmp/" + filestring)
+			ftp = ftplib.FTP("127.0.0.1")
+			ftp.login("ftp-user", "test")
+
+			f = open("./tmp/" + filestring, "r")
+
+			#ftp.cwd("pub")
+
+			ftp.storbinary("STOR " + filestring, f)
+			f.close()
+			ftp.quit()
+
+			msg = filestring + ":"
+			msg += localname
+
+			ret = self.send(msg, "regfile")
+			print ret
+
+			error = self.parse_error(ret)
+
+			if not error:
+				return True
+			return False
+
+		except ftplib.all_errors as error:
+			raise RuntimeError(error)
+			return False
 
