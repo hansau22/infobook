@@ -7,6 +7,8 @@ from os.path import exists
 from PyQt4 import QtCore, QtGui, uic
 import PyQt4.uic
 
+window_def = "login"
+
 
 port = 32325
 
@@ -20,9 +22,15 @@ if exists("login.dat") == True:
     if not so.auth_stayLogedIn():
         print "error in auth with file"
         exit()
+    else:
+        window_def = "normal"
 ## GUI
+if window_def == "login":
+    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('LogInScreen_v1.1.ui')
 
-MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('LogInScreen_v1.1.ui')
+if window_def == "normal":
+    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('Homescreen_v1.1.ui')
+
 
 class MainWindow(MainWindowBase, MainWindowForm):
     def __init__(self, parent = None):
@@ -48,7 +56,8 @@ def login_func():
     if not so.auth(None, None, True):
         print "error in auth"
         exit()
-
+    else:
+        window_def = "normal"
     #if so.write_group_message("meop", str(datetime.time(datetime.now()))):
     #   print "geht"
     #else:
@@ -98,22 +107,34 @@ def login_func():
 
 
 
+if window_def == "login":
+    if ( __name__ == '__main__' ):
+        login = None
+        if ( not login ):
+            login = QtGui.QApplication([])
 
-if ( __name__ == '__main__' ):
-    login = None
-    if ( not login ):
-        login = QtGui.QApplication([])
-
-    window = MainWindow()
-    window.show()
-        
-    window.connect(window.pushButton_2, QtCore.SIGNAL("clicked()"), login.quit)
-    window.connect(window.pushButton, QtCore.SIGNAL("clicked()"), login_func)
+        window = MainWindow()
+        window.show()
+            
+        window.connect(window.pushButton_2, QtCore.SIGNAL("clicked()"), login.quit)
+        window.connect(window.pushButton, QtCore.SIGNAL("clicked()"), login_func)
 
 
-    if ( login ):
-        login.exec_()
+        if ( login ):
+            login.exec_()
 
+
+if window_def == "normal":
+    if ( __name__ == '__main__' ):
+        normal = None
+        if ( not normal ):
+            normal = QtGui.QApplication([])
+
+        window = MainWindow()
+        window.show()
+
+        if ( normal ):
+            normal.exec_()
 
 
 ## Other Stuff

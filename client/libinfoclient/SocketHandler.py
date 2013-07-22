@@ -251,6 +251,7 @@ class SocketHandler:
 			#raise RuntimeError(error)
 			print error
 			return False
+
 	def auth_stayLogedIn(self):	
 		"""
 		Authentifiziert einen Nutzer anhand der login.dat
@@ -258,7 +259,6 @@ class SocketHandler:
 		"""
 		plain = open('login.dat', 'r').read()
 		plain_list = plain.split('\n')
-
 		if len(plain_list) > 0:
 			plain = str(plain_list[0])
 		else:
