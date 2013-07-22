@@ -508,7 +508,7 @@ class SocketHandler:
 		print name
 		if name:
 			os.rename("./data/" + filestring, "./data/" + name)
-			return True
+			return "./data/" + name
 		else:
 			return False
 
