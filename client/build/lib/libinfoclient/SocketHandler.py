@@ -366,9 +366,7 @@ class SocketHandler:
 			return False
 
 
-		data = self.uidstring + ":"
-		data += group_receiver + ":"
-		data += content
+		data = self.uidstring + ":" + str(group_receiver) + ":" + str(content)
 
 		response = self.send(data, "gmsg")
 		error = self.parse_error(response)
