@@ -28,6 +28,7 @@ class DatabaseHandler:
         self.mid_Pool = Pool(0, self.get_start_mid())
         self.bid_Pool = Pool(0, self.get_start_brdc_mid())
         self.fid_Pool = Pool(0, self.get_start_fid())
+        self.uid_Pool = Pool(0, self.get_start_uid())
 
 
     
@@ -67,12 +68,9 @@ class DatabaseHandler:
         self.db.commit()
 
         
-    def add_user(self, uid, username, pwhash):
+    def add_user(self, username, pwhash):
         """
         Fuegt einen Nutzer zur Datenbank hinzu
-
-        @param uid: Nutzer-ID
-        @type uid: int
 
         @param username: Nutzername
         @type username: str
@@ -83,7 +81,7 @@ class DatabaseHandler:
         @return: None, False wenn Parameter nicht stimmen
         """
 
-        self.cursor.execute("INSERT INTO users VALUES(?, ?, ?)", (uid, username, pwhash))
+        self.cursor.execute("INSERT INTO users VALUES(?, ?, ?)", (self.uid_Pool.give_next(), username, pwhash))
         self.db.commit()
 
 
@@ -405,6 +403,19 @@ class DatabaseHandler:
         @return: int ID
         """
         self.cursor.execute("SELECT fid FROM files ORDER BY fid DESC")
+        result = self.cursor.fetchone()
+        if result == None:
+            return 0
+        return (result[0] + 1)
+
+
+    def get_start_uid(self):
+        """
+        Gibt die erste freie UID zurueck
+
+        @return: int ID
+        """
+        self.cursor.execute("SELECT uid FROM users ORDER BY uid DESC")
         result = self.cursor.fetchone()
         if result == None:
             return 0

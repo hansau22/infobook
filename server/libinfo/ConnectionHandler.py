@@ -130,6 +130,8 @@ class ConnectionHandler:
                         resp = self.get_globalname(body)
                     elif self.header[0] == "getpic":
                         resp = self.get_profile_pic(body)
+                    elif self.header[0] == "adduser":
+                        resp = self.add_user(body)
 
 
                     # Antwortpaket senden
@@ -582,3 +584,24 @@ class ConnectionHandler:
             return "-"
         return string
 
+
+    def add_user(self, data):
+        """
+        Fuegt einen neuen Benutzer hinzu
+
+        @param data: Daten vom Client
+        @type data: str
+
+        @return: str - Nachricht an den Client
+        """
+
+        tmp = split(":", data, 2)
+
+        if not len(tmp) == 2:
+            return "error - not-enough-arguments - ADDUSER"
+
+        username = tmp[0]
+        pwhash = tmp[1]
+
+        self.database.adduser(username, pwhash)
+        return "success - ADDUSER"
