@@ -230,15 +230,9 @@ class SocketHandler:
 			return False
 
 		if (username == None) or (password == None):
-			if exists("login.dat") == True:
-			    plain = open('login.dat', 'r').read()
-			    plain_list = plain.split('\n')
+			print("Error no Username or Password given")
 
-			    if len(plain_list) > 0:
-			        plain = str(plain_list[0])
-			else:
-				raise RuntimeError("Login.dat content invalid and no password/username given")
-				return False
+			    
 		else:
 			if stay_logged_in == True:
 				self.write_loginfile(username, password)
@@ -248,6 +242,30 @@ class SocketHandler:
 
 		response = self.send(plain, "auth")
 
+		error = self.parse_error(response)
+
+		if not error:
+			self.uidstring = response
+			return True
+		else:
+			#raise RuntimeError(error)
+			print error
+			return False
+
+	def auth_stayLogedIn(self):	
+		"""
+		Authentifiziert einen Nutzer anhand der login.dat
+		@return: Boolean Success
+		"""
+		plain = open('login.dat', 'r').read()
+		plain_list = plain.split('\n')
+		if len(plain_list) > 0:
+			plain = str(plain_list[0])
+		else:
+			raise RuntimeError("Login.dat content invalid and no password/username given")
+			return False
+
+		response = self.send(plain, "auth")
 		error = self.parse_error(response)
 
 		if not error:
@@ -370,9 +388,7 @@ class SocketHandler:
 			return False
 
 
-		data = self.uidstring + ":"
-		data += group_receiver + ":"
-		data += content
+		data = self.uidstring + ":" + str(group_receiver) + ":" + str(content)
 
 		response = self.send(data, "gmsg")
 		error = self.parse_error(response)
@@ -437,7 +453,7 @@ class SocketHandler:
 		@return: None
 		"""
 
-		data = username + self.crypt.get_hash(plain_password)
+		data = username + ":" + self.crypt.get_hash(plain_password)
 
 		loginfile = open("login.dat", 'w')
 		loginfile.write(data)
@@ -508,7 +524,7 @@ class SocketHandler:
 		print name
 		if name:
 			os.rename("./data/" + filestring, "./data/" + name)
-			return True
+			return "./data/" + name
 		else:
 			return False
 
@@ -555,4 +571,29 @@ class SocketHandler:
 		except ftplib.all_errors as error:
 			raise RuntimeError(error)
 			return False
+
+
+	def get_profile_pic(self, username):
+		"""
+		Speichert das Profilbild fuer einen Nutzer
+
+		@param username: Nutzername
+		@type username: str
+
+		@return: None
+		"""
+
+		ret = self.send(username, "getpic")
+
+		error = self.parse_error(ret)
+
+		if not error:
+			ret = self.get_file(ret)
+			error = self.parse_error(ret)
+			if not error:
+				shutil.copyfile("./data/" + username + ".jpg", "./pic/" + username + ".jpg")
+				return None
+		
+		shutil.copyfile("./pic/default.jpg", "./pic/" + username + ".jpg")
+
 
