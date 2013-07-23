@@ -86,6 +86,22 @@ class DatabaseHandler:
         self.db.commit()
 
 
+    def check_user(self, username):
+        """
+        Prueft ob Nutzer bereits vorhanden ist
+
+        @param username: Nutzername
+        @type username: str
+
+        @return: Boolean Erfolg
+        """
+
+        self.cursor.execute("SELECT * FROM users WHERE username = ?", [username])
+        if self.cursor.fetchone() != None:
+            return False
+        return True
+
+
         
     def auth_user(self, username, pwhash):
         """
