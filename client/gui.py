@@ -29,16 +29,43 @@ if window_def == "login":
     MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('LogInScreen_v1.1.ui')
 
 if window_def == "normal":
-    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('Homescreen_v1.1.ui')
+    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('Homescreen_v1.2.ui')
+
+if window_def == "chat":
+    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('Chatfenster_v1.1.ui')
+
+if window_def == "registration":
+    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('Registration_v1.ui')
 
 
-class MainWindow(MainWindowBase, MainWindowForm):
+class MainWindow_Login(MainWindowBase, MainWindowForm):
     def __init__(self, parent = None):
-        super(MainWindow, self).__init__(parent)
+        super(MainWindow_Login, self).__init__(parent)
         
         # setup the ui
         self.setupUi(self)
 
+class MainWindow_Normal(MainWindowBase, MainWindowForm):
+    def __init__(self, parent = None):
+        super(MainWindow_Normal, self).__init__(parent)
+        
+        self.button = QtGui.QPushButton("test button", self)
+        # setup the ui
+        self.setupUi(self)
+
+class MainWindow_Chat(MainWindowBase, MainWindowForm):
+    def __init__(self, parent = None):
+        super(MainWindow_Chat, self).__init__(parent)
+        
+        # setup the ui
+        self.setupUi(self)
+
+class MainWindow_Registration(MainWindowBase, MainWindowForm):
+    def __init__(self, parent = None):
+        super(MainWindow_Registration, self).__init__(parent)
+        
+        # setup the ui
+        self.setupUi(self)
 def login_func():
     user = str(window.lineEdit_3.text())
     password = str(window.lineEdit.text())
@@ -113,7 +140,7 @@ if window_def == "login":
         if ( not login ):
             login = QtGui.QApplication([])
 
-        window = MainWindow()
+        window = MainWindow_Login()
         window.show()
             
         window.connect(window.pushButton_2, QtCore.SIGNAL("clicked()"), login.quit)
@@ -129,12 +156,39 @@ if window_def == "normal":
         normal = None
         if ( not normal ):
             normal = QtGui.QApplication([])
-
-        window = MainWindow()
+        
+        
+        window = MainWindow_Normal()
         window.show()
 
         if ( normal ):
             normal.exec_()
+
+
+if window_def == "registration":
+    if ( __name__ == '__main__' ):
+        reg = None
+        if ( not reg ):
+            reg = QtGui.QApplication([])
+
+        window = MainWindow_Registration()
+        window.show()
+
+        if ( reg ):
+            reg.exec_()
+
+
+if window_def == "chat":
+    if ( __name__ == '__main__' ):
+        chat = None
+        if ( not chat ):
+            chat = QtGui.QApplication([])
+
+        window = MainWindow_Chat()
+        window.show()
+
+        if ( chat ):
+            chat.exec_()
 
 
 ## Other Stuff
