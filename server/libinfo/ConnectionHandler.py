@@ -600,10 +600,13 @@ class ConnectionHandler:
         tmp = split(":", data, 2)
 
         if not len(tmp) == 2:
-            return "error - not-enough-arguments - ADDUSER"
+            return "error - not-enough-arguments - ADDUSER"        
 
         username = tmp[0]
         pwhash = tmp[1]
+
+        if not self.database.check_user(username):
+            return "error - already-present-username - ADDUSER"
 
         self.database.add_user(username, pwhash)
         return "success - ADDUSER"
