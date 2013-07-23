@@ -240,17 +240,17 @@ class SocketHandler:
 			password = self.crypt.get_hash(password)
 			plain = username + ":" + password
 
-		response = self.send(plain, "auth")
+			response = self.send(plain, "auth")
 
-		error = self.parse_error(response)
+			error = self.parse_error(response)
 
-		if not error:
-			self.uidstring = response
-			return True
-		else:
-			#raise RuntimeError(error)
-			print error
-			return False
+			if not error:
+				self.uidstring = response
+				return True
+			else:
+				#raise RuntimeError(error)
+				print error
+				return False
 
 	def auth_stayLogedIn(self):	
 		"""

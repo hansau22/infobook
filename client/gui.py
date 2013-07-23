@@ -25,27 +25,24 @@ if exists("login.dat") == True:
     else:
         window_def = "registration"
 ## GUI
-if window_def == "login":
-    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('LogInScreen_v1.1.ui')
+MainWindowForm_Login, MainWindowBase_Login = PyQt4.uic.loadUiType('LogInScreen_v1.1.ui')
 
-if window_def == "normal":
-    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('Homescreen_v1.2.ui')
+MainWindowForm_Home, MainWindowBase_Home = PyQt4.uic.loadUiType('Homescreen_v1.2.ui')
 
-if window_def == "chat":
-    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('Chatfenster_v1.1.ui')
-
-if window_def == "registration":
-    MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('Registration_v1.ui')
+MainWindowForm_Chat, MainWindowBase_Chat = PyQt4.uic.loadUiType('Chatfenster_v1.1.ui')
 
 
-class MainWindow_Login(MainWindowBase, MainWindowForm):
+MainWindowForm_Reg, MainWindowBase_Reg = PyQt4.uic.loadUiType('Registration_v1.ui')
+
+
+class MainWindow_Login(MainWindowBase_Login, MainWindowForm_Login):
     def __init__(self, parent = None):
         super(MainWindow_Login, self).__init__(parent)
         
         # setup the ui
         self.setupUi(self)
 
-class MainWindow_Normal(MainWindowBase, MainWindowForm):
+class MainWindow_Normal(MainWindowBase_Home, MainWindowForm_Home):
     def __init__(self, parent = None):
         super(MainWindow_Normal, self).__init__(parent)
         
@@ -54,14 +51,14 @@ class MainWindow_Normal(MainWindowBase, MainWindowForm):
         # setup the ui
         self.setupUi(self)
 
-class MainWindow_Chat(MainWindowBase, MainWindowForm):
+class MainWindow_Chat(MainWindowBase_Chat, MainWindowForm_Chat):
     def __init__(self, parent = None):
         super(MainWindow_Chat, self).__init__(parent)
         
         # setup the ui
         self.setupUi(self)
 
-class MainWindow_Registration(MainWindowBase, MainWindowForm):
+class MainWindow_Registration(MainWindowBase_Reg, MainWindowForm_Reg):
     def __init__(self, parent = None):
         super(MainWindow_Registration, self).__init__(parent)
         
@@ -104,6 +101,13 @@ def chat_text_func():
     text = str(window.lineEdit.text())
     receiver = "test"
     so.write_message(receiver, text)
+
+def back_to_normal():
+    window_def = "normal"
+    global window
+    window = MainWindow_Normal()
+    window.show()
+
 
 def chat_file_func():
     filename = QtGui.QFileDialog.getOpenFileName(self, 'Open File', '.')
@@ -173,64 +177,65 @@ def chat_file_func():
 
 if window_def == "login":
     if ( __name__ == '__main__' ):
-        login = None
-        if ( not login ):
-            login = QtGui.QApplication([])
-
+        app = None
+        if ( not app ):
+            app = QtGui.QApplication([])
+        global window
         window = MainWindow_Login()
         window.show()
             
-        window.connect(window.pushButton_2, QtCore.SIGNAL("clicked()"), login.quit)
+        window.connect(window.pushButton_2, QtCore.SIGNAL("clicked()"), app.quit)
         window.connect(window.pushButton, QtCore.SIGNAL("clicked()"), login_func)
 
 
-        if ( login ):
-            login.exec_()
+        if ( app ):
+            app.exec_()
 
 
 if window_def == "normal":
     if ( __name__ == '__main__' ):
-        normal = None
-        if ( not normal ):
-            normal = QtGui.QApplication([])
+        app = None
+        if ( not app ):
+            app = QtGui.QApplication([])
         
-        
+        global window
         window = MainWindow_Normal()
         window.show()
 
-        if ( normal ):
-            normal.exec_()
+        if ( app ):
+            app.exec_()
 
 
 if window_def == "registration":
     if ( __name__ == '__main__' ):
-        reg = None
-        if ( not reg ):
-            reg = QtGui.QApplication([])
-
+        
+        if ( not QtGui.QApplication.instance() ):
+            app = QtGui.QApplication([])
+        global window
         window = MainWindow_Registration()
-        window.show()
+        window.show()     
 
-        window.connect(window.cancel, QtCore.SIGNAL("clicked()"), reg.quit)
+        
+
+        window.connect(window.cancel, QtCore.SIGNAL("clicked()"), back_to_normal)
         window.connect(window.register_2, QtCore.SIGNAL("clicked()"), reg_func)
 
-        if ( reg ):
-            reg.exec_()
+        app.exec_()
 
 
 if window_def == "chat":
     if ( __name__ == '__main__' ):
-        chat = None
-        if ( not chat ):
-            chat = QtGui.QApplication([])
-
+        app = None
+        if ( not app ):
+            app = QtGui.QApplication([])
+        global window
         window = MainWindow_Chat()
         window.show()
 
         window.connect(window.pushButton, QtCore.SIGNAL("clicked()"), chat_text_func)
 
-        if ( chat ):
-            chat.exec_()
+        if ( app ):
+            app.exec_()
 
 
 ## Other Stuff
