@@ -583,7 +583,6 @@ class ConnectionHandler:
         if not string:
             return "-"
         return string
-<<<<<<< HEAD
 
 
     def add_user(self, data):
@@ -606,5 +605,3 @@ class ConnectionHandler:
 
         self.database.adduser(username, pwhash)
         return "success - ADDUSER"
-=======
->>>>>>> 8fbbfbeadd42ede7492fbc3070983c916142cfe8
