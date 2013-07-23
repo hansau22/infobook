@@ -132,6 +132,8 @@ class ConnectionHandler:
                         resp = self.get_profile_pic(body)
                     elif self.header[0] == "adduser":
                         resp = self.add_user(body)
+                    elif self.header[0] == "adressbook":
+                        resp = self.get_address_book(body)
 
 
                     # Antwortpaket senden
@@ -605,3 +607,19 @@ class ConnectionHandler:
 
         self.database.add_user(username, pwhash)
         return "success - ADDUSER"
+
+
+    def get_address_book(self, data):
+        """
+        Gibt das Nutzer-Addressbuch zurueck
+
+        @param data: uidstring
+        @type data: str
+
+        @return: Array - [int UID, str Name]
+        """
+
+        if not self.check_uidstring(int(self.header[2]), data):
+            return "error - wrong-uidstring - GETADRBOOK"
+
+        return self.database.get_address_book(self.users[int(self.header[2])])

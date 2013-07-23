@@ -16,9 +16,9 @@ except RuntimeError as err:
 
 
 
-# if not so.auth(None, None, True):
-# 	print "error in auth"
-# 	exit()
+if not so.auth("gu", "ga", False):
+	print "error in auth"
+	exit()
 
 #if so.write_group_message("meop", str(datetime.time(datetime.now()))):
 #	print "geht"
@@ -66,7 +66,9 @@ except RuntimeError as err:
 	# except RuntimeError as error:
 	# 	print error
 
-if not so.add_new_user("gu", "ga", False):
-	print "false"
-else:
-	print "success"
+# if not so.add_new_user("gu", "ga", False):
+# 	print "false"
+# else:
+# 	print "success"
+
+print so.get_user_address_book()

@@ -43,6 +43,7 @@ class DatabaseHandler:
         self.cursor.execute("CREATE TABLE IF NOT EXISTS messages(mid INTEGER, uidsender INTEGER, uidreceiver INTEGER, content TEXT)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS groupmessages(bid INTEGER, uidsender INTEGER, gidreceiver INTEGER, content TEXT)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS files(fid INTEGER, localname Text, globalname Text, owner INTEGER)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS addressbook(uid INTEGER, addid INTEGER)")
         self.db.commit()
 
         self.cursor.execute("SELECT uid FROM users WHERE uid = 0")
@@ -122,6 +123,24 @@ class DatabaseHandler:
         if result == None:
             return False
         return int(result[0])
+
+
+
+    def get_username_by_id(self, uid):
+        """
+        Gibt den Nutzernamen nach einer ID zurueck
+
+        @param uid: Nutzer-ID
+        @type uid: int
+
+        @return: str - Name
+        """
+
+        self.cursor.execute("SELECT username FROM users WHERE uid = ?", [uid])
+        result = self.cursor.fetchone()
+        if result == None:
+            return False
+        return result[0]
 
 
     def get_group_id(self, name):
@@ -419,4 +438,28 @@ class DatabaseHandler:
         result = self.cursor.fetchone()
         if result == None:
             return 0
-        return (result[0] + 1)   
+        return (result[0] + 1)  
+
+
+
+    def get_address_book(self, uid):
+        """
+        User-ID des Senders
+
+        @param uid: Nutzer-ID
+        @type uid: int
+
+        @return: Array - [int UID, str Name]
+        """
+
+        self.cursor.execute("SELECT addid FROM addressbook WHERE uid = ?", [uid])
+
+        ret_value = []
+        result = self.cursor.fetchone()
+        while result != None:
+            ret_value.append((result[0], self.get_username_by_id(int(result[0]))))
+            result = self.cursor.fetchone()
+
+        return ret_value
+
+

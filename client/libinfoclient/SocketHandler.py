@@ -626,3 +626,20 @@ class SocketHandler:
 			self.write_loginfile(username, password)
 
 		return True
+
+
+	def get_user_address_book(self):
+		"""
+		Empfaengt das Nutzer-Adressenbuch
+
+		@return: Array - Adressbuch
+		"""
+
+		ret = self.send(self.uidstring, "adressbook")
+		error = self.parse_error(ret)
+
+		if error != False:
+			print error
+			return False
+
+		return ret
