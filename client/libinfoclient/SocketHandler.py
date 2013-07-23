@@ -598,7 +598,7 @@ class SocketHandler:
 
 
 
-	def add_new_user(self, username, password, saveuser):
+	def add_new_user(self, username, password):
 		"""
 		Fuegt einen neuen Nutzer auf dem Server hinzu
 
@@ -621,10 +621,6 @@ class SocketHandler:
 		error = self.parse_error(ret)
 		if error != False:
 			return False
-
-		if saveuser == True:
-			self.write_loginfile(username, password)
-
 		return True
 
 

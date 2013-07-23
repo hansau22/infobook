@@ -7,7 +7,7 @@ from os.path import exists
 from PyQt4 import QtCore, QtGui, uic
 import PyQt4.uic
 
-window_def = "login"
+window_def = "registration"
 
 
 port = 32325
@@ -23,7 +23,7 @@ if exists("login.dat") == True:
         print "error in auth with file"
         exit()
     else:
-        window_def = "normal"
+        window_def = "registration"
 ## GUI
 if window_def == "login":
     MainWindowForm, MainWindowBase = PyQt4.uic.loadUiType('LogInScreen_v1.1.ui')
@@ -50,6 +50,7 @@ class MainWindow_Normal(MainWindowBase, MainWindowForm):
         super(MainWindow_Normal, self).__init__(parent)
         
         self.button = QtGui.QPushButton("test button", self)
+        self.button.move(20, 200)
         # setup the ui
         self.setupUi(self)
 
@@ -85,6 +86,42 @@ def login_func():
         exit()
     else:
         window_def = "normal"
+
+def reg_func():
+    user = str(window.username.text())
+    password = str(window.password.text())
+    conf_password = str(window.confirm_password.text())
+    if password == conf_password and password != "" and user != "":
+        if not so.add_new_user(user, password):
+            window.label_error.setText("Please Try again something went wrong")
+        else:
+            window.label_error.setText("User added successfuly")
+
+    else:
+        window.label_error.setText("Please Try again something went wrong")
+
+def chat_text_func():
+    text = str(window.lineEdit.text())
+    receiver = "test"
+    so.write_message(receiver, text)
+
+def chat_file_func():
+    filename = QtGui.QFileDialog.getOpenFileName(self, 'Open File', '.')
+    fname = open(filename)
+    data = fname.read()
+    self.textEdit.setText(data)
+    fname.close() 
+
+    try:
+        so = SocketHandler('localhost', port)
+    except RuntimeError as err:
+        print err
+
+    if not so.auth(None, None, True):
+        print "error in auth"
+        exit()
+    so.write_message(receiver, text)
+
     #if so.write_group_message("meop", str(datetime.time(datetime.now()))):
     #   print "geht"
     #else:
@@ -174,6 +211,9 @@ if window_def == "registration":
         window = MainWindow_Registration()
         window.show()
 
+        window.connect(window.cancel, QtCore.SIGNAL("clicked()"), reg.quit)
+        window.connect(window.register_2, QtCore.SIGNAL("clicked()"), reg_func)
+
         if ( reg ):
             reg.exec_()
 
@@ -186,6 +226,8 @@ if window_def == "chat":
 
         window = MainWindow_Chat()
         window.show()
+
+        window.connect(window.pushButton, QtCore.SIGNAL("clicked()"), chat_text_func)
 
         if ( chat ):
             chat.exec_()
