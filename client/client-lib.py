@@ -16,9 +16,9 @@ except RuntimeError as err:
 
 
 
-if not so.auth(None, None, True):
-	print "error in auth"
-	exit()
+# if not so.auth(None, None, True):
+# 	print "error in auth"
+# 	exit()
 
 #if so.write_group_message("meop", str(datetime.time(datetime.now()))):
 #	print "geht"
@@ -55,13 +55,18 @@ if not so.auth(None, None, True):
 
 
 
-filestring = so.request_file()
-print filestring
-if filestring:
-	try:
-		ret = so.upload_file(filestring, "/home/julian/asdf", "asdf")
-		ret = so.get_file(filestring)
-		if not ret:
-			print "file receiving worked"
-	except RuntimeError as error:
-		print error
+#filestring = so.request_file()
+#print filestring
+#if filestring:
+	# try:
+	# 	ret = so.upload_file(filestring, "/home/julian/asdf", "asdf")
+	# 	ret = so.get_file(filestring)
+	# 	if not ret:
+	# 		print "file receiving worked"
+	# except RuntimeError as error:
+	# 	print error
+
+if not so.add_new_user("gu", "ga", False):
+	print "false"
+else:
+	print "success"

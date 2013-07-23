@@ -597,3 +597,32 @@ class SocketHandler:
 		shutil.copyfile("./pic/default.jpg", "./pic/" + username + ".jpg")
 
 
+
+	def add_new_user(self, username, password, saveuser):
+		"""
+		Fuegt einen neuen Nutzer auf dem Server hinzu
+
+		@param username: Nutzername
+		@type username: str
+
+		@param password: Passwort
+		@type password: str
+
+		@param saveuser: Nutzer speichern ?
+		@type saveuser: Boolean
+
+		@return: Boolean Erfolg
+		"""
+
+		msg = username + ":" + self.crypt.get_hash(password)
+
+		ret = self.send(msg, "adduser")
+		print ret
+		error = self.parse_error(ret)
+		if error != False:
+			return False
+
+		if saveuser == True:
+			self.write_loginfile(username, password)
+
+		return True

@@ -603,5 +603,5 @@ class ConnectionHandler:
         username = tmp[0]
         pwhash = tmp[1]
 
-        self.database.adduser(username, pwhash)
+        self.database.add_user(username, pwhash)
         return "success - ADDUSER"
