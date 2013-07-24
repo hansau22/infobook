@@ -240,17 +240,17 @@ class SocketHandler:
 			password = self.crypt.get_hash(password)
 			plain = username + ":" + password
 
-		response = self.send(plain, "auth")
+			response = self.send(plain, "auth")
 
-		error = self.parse_error(response)
+			error = self.parse_error(response)
 
-		if not error:
-			self.uidstring = response
-			return True
-		else:
-			#raise RuntimeError(error)
-			print error
-			return False
+			if not error:
+				self.uidstring = response
+				return True
+			else:
+				#raise RuntimeError(error)
+				print error
+				return False
 
 	def auth_stayLogedIn(self):	
 		"""
@@ -597,3 +597,45 @@ class SocketHandler:
 		shutil.copyfile("./pic/default.jpg", "./pic/" + username + ".jpg")
 
 
+
+	def add_new_user(self, username, password):
+		"""
+		Fuegt einen neuen Nutzer auf dem Server hinzu
+
+		@param username: Nutzername
+		@type username: str
+
+		@param password: Passwort
+		@type password: str
+
+		@param saveuser: Nutzer speichern ?
+		@type saveuser: Boolean
+
+		@return: Boolean Erfolg
+		"""
+
+		msg = username + ":" + self.crypt.get_hash(password)
+
+		ret = self.send(msg, "adduser")
+		print ret
+		error = self.parse_error(ret)
+		if error != False:
+			return False
+		return True
+
+
+	def get_user_address_book(self):
+		"""
+		Empfaengt das Nutzer-Adressenbuch
+
+		@return: Array - Adressbuch
+		"""
+
+		ret = self.send(self.uidstring, "adressbook")
+		error = self.parse_error(ret)
+
+		if error != False:
+			print error
+			return False
+
+		return ret

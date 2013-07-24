@@ -234,8 +234,7 @@ class SocketHandler:
 
 			    
 		else:
-			if stay_logged_in == True:
-				self.write_loginfile(username, password)
+			
 
 			password = self.crypt.get_hash(password)
 			plain = username + ":" + password
@@ -246,6 +245,8 @@ class SocketHandler:
 
 			if not error:
 				self.uidstring = response
+				if stay_logged_in == True:
+					self.write_loginfile(username, password)
 				return True
 			else:
 				#raise RuntimeError(error)

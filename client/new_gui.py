@@ -3,6 +3,7 @@ import time
 from libinfoclient import SocketHandler
 import sys
 import time
+import os
 from os.path import exists
 from PyQt4 import QtCore, QtGui, uic
 import PyQt4.uic
@@ -89,14 +90,16 @@ def home_screen():
     window_home = MainWindow_Normal()
     window_home.show()
     window_home.connect(window_home.reg_user, QtCore.SIGNAL("clicked()"), to_reg)
+    window_home.connect(window_home.logout, QtCore.SIGNAL("clicked()"), logout)
+    moep = so.get_user_address_book()
+    window_home.addressbook.setText(moep[0])
 
 def login_screen():
 
     if exists("login.dat") == True:
         print("auth file is there")
         if not so.auth_stayLogedIn():
-            print "error in auth with file"
-            exit()
+            print "error with Auth File please delet it"
         else:
             home_screen()
     else:
@@ -129,7 +132,6 @@ def login_func():
 
     if not so.auth(user, password, stayLogedIn):
         print "error in auth"
-        exit()
     else:
         print("Login Success")
         window_login.hide()
@@ -157,6 +159,10 @@ def back_to_normal():
     window_reg.hide()
     window_home.show()
 
+def logout():
+    if exists("login.dat") == True:
+        os.remove("login.dat")
+    app.quit()
 
 def chat_file_func():
     filename = QtGui.QFileDialog.getOpenFileName(self, 'Open File', '.')

@@ -99,6 +99,19 @@
     <string>Logout</string>
    </property>
   </widget>
+  <widget class="QLabel" name="addressbook">
+   <property name="geometry">
+    <rect>
+     <x>140</x>
+     <y>180</y>
+     <width>321</width>
+     <height>411</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TextLabel</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>
